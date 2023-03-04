@@ -31,9 +31,11 @@ export interface StateMachineStackProps extends NestedStackProps {
   readonly ecsCluster: Cluster;
   readonly prepareTaskDefinition: Ec2TaskDefinition;
   readonly codeQualityTaskDefinition: Ec2TaskDefinition;
-  readonly testTaskDefinition: Ec2TaskDefinition;
+  readonly unitTestTaskDefinition: Ec2TaskDefinition;
   readonly buildTaskDefinition: Ec2TaskDefinition;
-  readonly deployTaskDefinition: Ec2TaskDefinition;
+  readonly integrationTestTaskDefinition: Ec2TaskDefinition;
+  readonly deployStagingTaskDefinition: Ec2TaskDefinition;
+  readonly deployProdTaskDefinition: Ec2TaskDefinition;
   readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
   readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
 }
@@ -169,9 +171,9 @@ export class StateMachineStack extends NestedStack {
           },
         ],
         resultPath: '$.lastTaskOutput',
-        subnets: {
-          subnetType: SubnetType.PUBLIC,
-        },
+        // subnets: {
+        //   subnetType: SubnetType.PUBLIC,
+        // },
         launchTarget: new EcsEc2LaunchTarget({
           placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
         }),
@@ -183,7 +185,7 @@ export class StateMachineStack extends NestedStack {
     // Swap out task definitions as you go
     const prepareTask = createEcsRunTask(
       Stage.PREPARE,
-      props.sampleSuccessTaskDefinition
+      props.prepareTaskDefinition
     );
 
     const codeQualityTask = createEcsRunTask(

@@ -1,4 +1,4 @@
-FROM --platform=linux/amd64 node
+FROM --platform=linux/amd64 node:18
+USER root
 COPY commands.sh /
-CMD sh commands.sh
-VOLUME [ "/data" ]
+ENTRYPOINT ["/bin/sh", "/commands.sh"]
