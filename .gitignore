@@ -6,3 +6,12 @@ node_modules
 # CDK asset staging directory
 .cdk.staging
 cdk.out
+
+.env
+*.pem
+
+# CDK context
+cdk.context.json
+
+# State machine input
+state_machine_input.json

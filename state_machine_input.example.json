@@ -1,0 +1,26 @@
+{
+  "serviceId": "string",
+  "runId": "string",
+  "stageIds": {
+    "prepare": "string",
+    "codeQuality": "string",
+    "test": "string",
+    "deployStaging": "string",
+    "deployProduction": "string"
+  },
+  "runFull": "boolean",
+  "autoDeploy": "boolean",
+  "containerVariables": {
+    "awsAccountId": "string",
+    "awsAccessKey": "string",
+    "awsSecretAccessKey": "string",
+    "ghPat": "string",
+    "ghRepo": "string",
+    "codeQualityCommand": "string",
+    "testCommand": "string",
+    "dockerfilePath": "string",
+    "awsEcsCluster": "string",
+    "awsEcsService": "string",
+    "awsEcrRepo": "string"
+  }
+}
