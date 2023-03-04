@@ -1,26 +1,26 @@
 {
-  "serviceId": "string",
-  "runId": "string",
+  "serviceId": "182801d8-ba2d-11ed-afa1-0242ac120002",
+  "runId": "182801d8-ba2d-11ed-afa1-0242ac120002",
   "stageIds": {
-    "prepare": "string",
-    "codeQuality": "string",
-    "test": "string",
-    "deployStaging": "string",
-    "deployProduction": "string"
+    "prepare": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "codeQuality": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "test": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "deployStaging": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "deployProduction": "182801d8-ba2d-11ed-afa1-0242ac120002"
   },
-  "runFull": "boolean",
-  "autoDeploy": "boolean",
+  "runFull": "true",
+  "autoDeploy": "false",
   "containerVariables": {
-    "awsAccountId": "string",
-    "awsAccessKey": "string",
-    "awsSecretAccessKey": "string",
-    "ghPat": "string",
-    "ghRepo": "string",
-    "codeQualityCommand": "string",
-    "testCommand": "string",
-    "dockerfilePath": "string",
-    "awsEcsCluster": "string",
-    "awsEcsService": "string",
-    "awsEcrRepo": "string"
+    "awsAccountId": "01234567912",
+    "awsAccessKey": "012345679",
+    "awsSecretAccessKey": "01234567912-ABCDEFG",
+    "ghPat": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "ghRepo": "https://github.com/user-org/repo-name.git",
+    "codeQualityCommand": "npm run lint",
+    "testCommand": "npm run test",
+    "dockerfilePath": ".",
+    "awsEcsCluster": "my-ecs-cluster-name",
+    "awsEcsService": "my-ecs-service-name",
+    "awsEcrRepo": "my-ecr-repo-name"
   }
 }
