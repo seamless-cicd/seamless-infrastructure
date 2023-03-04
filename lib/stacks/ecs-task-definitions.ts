@@ -1,19 +1,25 @@
 import { NestedStack } from 'aws-cdk-lib';
 import {
   Ec2TaskDefinition,
+  ContainerImage,
   NetworkMode,
   Scope,
   DockerVolumeConfiguration,
   MountPoint,
   AwsLogDriver,
-  ContainerImage,
+  FireLensLogDriver,
+  FirelensLogRouter,
+  FirelensLogRouterType,
 } from 'aws-cdk-lib/aws-ecs';
+import { Construct } from 'constructs';
 
-// Volume configuration
-const dockerVolumeMountPoint: MountPoint = {
-  sourceVolume: 'seamless-efs-docker-volume',
-  containerPath: '/data',
-  readOnly: false,
+// Configure shared Docker volume
+const createDockerVolumeMountPoint = (): MountPoint => {
+  return {
+    sourceVolume: 'seamless-efs-docker-volume',
+    containerPath: '/data',
+    readOnly: false,
+  };
 };
 
 const createDockerVolumeConfig = (
@@ -31,10 +37,31 @@ const createDockerVolumeConfig = (
   };
 };
 
+// Configure logging sidecar container
+const createLoggingContainer = (
+  scope: Construct,
+  taskDefinition: Ec2TaskDefinition
+): FirelensLogRouter => {
+  return new FirelensLogRouter(scope, 'SeamlessLogRouter', {
+    memoryLimitMiB: 256,
+    firelensConfig: {
+      type: FirelensLogRouterType.FLUENTBIT,
+      options: {
+        enableECSLogMetadata: true,
+      },
+    },
+    image: ContainerImage.fromRegistry(
+      'public.ecr.aws/aws-observability/aws-for-fluent-bit:latest'
+    ),
+    taskDefinition,
+  });
+};
+
 // Pipeline stages
 const createPrepareTaskDefinition = (
   ecsStack: NestedStack,
-  efsDnsName: string
+  efsDnsName: string,
+  logSubscriberUrl: string = ''
 ) => {
   const prepareTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Prepare', {
     family: 'seamless-prepare-task-definition',
@@ -52,16 +79,38 @@ const createPrepareTaskDefinition = (
     image: ContainerImage.fromAsset('./lib/assets/prepare'),
     cpu: 256,
     memoryLimitMiB: 512,
-    logging: new AwsLogDriver({ streamPrefix: 'prepare' }),
+    logging: new FireLensLogDriver({
+      env: ['GITHUB_REPO_URL'],
+      options: {
+        Name: 'Http',
+        Host:
+          logSubscriberUrl.slice(0, 8) === 'https://'
+            ? logSubscriberUrl.slice(8)
+            : logSubscriberUrl,
+        Format: 'json_lines',
+        Port: '443',
+        URI: '/logs',
+        tls: 'on',
+        'tls.verify': 'off',
+      },
+    }),
   });
 
-  prepareContainer.addMountPoints(dockerVolumeMountPoint);
+  prepareContainer.addMountPoints(createDockerVolumeMountPoint());
+
+  const loggingContainer = createLoggingContainer(
+    ecsStack,
+    prepareTaskDefinition
+  );
 
   return prepareTaskDefinition;
 };
 
 // Sample definitions for testing
-const createSuccessTaskDefinition = (ecsStack: NestedStack) => {
+const createSuccessTaskDefinition = (
+  ecsStack: NestedStack,
+  logSubscriberUrl: string | undefined
+) => {
   const sampleSuccessTaskDefinition = new Ec2TaskDefinition(
     ecsStack,
     'SampleSuccess',
@@ -81,7 +130,10 @@ const createSuccessTaskDefinition = (ecsStack: NestedStack) => {
   return sampleSuccessTaskDefinition;
 };
 
-const createFailureTaskDefinition = (ecsStack: NestedStack) => {
+const createFailureTaskDefinition = (
+  ecsStack: NestedStack,
+  logSubscriberUrl: string | undefined
+) => {
   const sampleFailureTaskDefinition = new Ec2TaskDefinition(
     ecsStack,
     'SampleFailure',

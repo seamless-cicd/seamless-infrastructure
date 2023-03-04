@@ -22,6 +22,7 @@ import taskDefinitions from './ecs-task-definitions';
 export interface EcsStackProps extends NestedStackProps {
   readonly vpc: IVpc;
   readonly efs: FileSystem;
+  readonly logSubscriberUrl: string | undefined;
 }
 
 export class EcsStack extends NestedStack {
@@ -82,14 +83,15 @@ export class EcsStack extends NestedStack {
 
     // Sample task definitions
     this.sampleSuccessTaskDefinition =
-      taskDefinitions.createSuccessTaskDefinition(this);
+      taskDefinitions.createSuccessTaskDefinition(this, props.logSubscriberUrl);
     this.sampleFailureTaskDefinition =
-      taskDefinitions.createFailureTaskDefinition(this);
+      taskDefinitions.createFailureTaskDefinition(this, props.logSubscriberUrl);
 
     // Pipeline stage executor task definitions
     this.prepareTaskDefinition = taskDefinitions.createPrepareTaskDefinition(
       this,
-      efsDnsName
+      efsDnsName,
+      props.logSubscriberUrl
     );
 
     /*

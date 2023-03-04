@@ -30,6 +30,7 @@ export class SeamlessStack extends Stack {
     const ecsStack = new EcsStack(this, 'SeamlessEcs', {
       vpc: vpcStack.vpc,
       efs: efsStack.efs,
+      logSubscriberUrl: process.env.LOG_SUBSCRIBER_URL,
     });
 
     ecsStack.addDependency(vpcStack);
