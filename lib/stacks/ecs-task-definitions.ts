@@ -10,7 +10,6 @@ import {
   FireLensLogDriver,
   FirelensLogRouter,
   FirelensLogRouterType,
-  ContainerDefinition,
 } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
 
@@ -43,10 +42,11 @@ const createDockerVolumeConfig = (
 
 // Configure logging container
 const createLoggingContainer = (
+  containerName: string,
   scope: Construct,
   taskDefinition: Ec2TaskDefinition
 ): FirelensLogRouter => {
-  return new FirelensLogRouter(scope, 'SeamlessLogRouter', {
+  return new FirelensLogRouter(scope, containerName, {
     memoryLimitMiB: 256,
     firelensConfig: {
       type: FirelensLogRouterType.FLUENTBIT,
@@ -80,13 +80,13 @@ const createLogDriver = (): FireLensLogDriver => {
   });
 };
 
-// Pipeline stages
+// Prepare stage
 const createPrepareTaskDefinition = (
   ecsStack: NestedStack,
   efsDnsName: string
 ) => {
   const prepareTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Prepare', {
-    family: 'seamless-prepare-task-definition',
+    family: 'seamless-taskdefinition-prepare',
     networkMode: NetworkMode.BRIDGE,
   });
 
@@ -112,11 +112,139 @@ const createPrepareTaskDefinition = (
 
   // Add sidecar logging container
   const loggingContainer = createLoggingContainer(
+    'SeamlessLoggerPrepare',
     ecsStack,
     prepareTaskDefinition
   );
 
   return prepareTaskDefinition;
+};
+
+// Code Quality stage
+const createCodeQualityTaskDefinition = (
+  ecsStack: NestedStack,
+  efsDnsName: string
+) => {
+  const codeQualityTaskDefinition = new Ec2TaskDefinition(
+    ecsStack,
+    'CodeQuality',
+    {
+      family: 'seamless-taskdefinition-codequality',
+      networkMode: NetworkMode.BRIDGE,
+    }
+  );
+
+  // Add Docker volume
+  const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
+
+  codeQualityTaskDefinition.addVolume({
+    name: 'seamless-efs-docker-volume',
+    dockerVolumeConfiguration,
+  });
+
+  // Add application container
+  const logDriver = createLogDriver();
+
+  const codeQualityContainer = codeQualityTaskDefinition.addContainer(
+    'codeQuality',
+    {
+      image: ContainerImage.fromAsset('./lib/assets/code_quality'),
+      cpu: 256,
+      memoryLimitMiB: 512,
+      logging: logDriver,
+    }
+  );
+
+  codeQualityContainer.addMountPoints(createDockerVolumeMountPoint());
+
+  // Add sidecar logging container
+  const loggingContainer = createLoggingContainer(
+    'SeamlessLoggerCodeQuality',
+    ecsStack,
+    codeQualityTaskDefinition
+  );
+
+  return codeQualityTaskDefinition;
+};
+
+// Unit Test stage
+const createUnitTestTaskDefinition = (
+  ecsStack: NestedStack,
+  efsDnsName: string
+) => {
+  const unitTestTaskDefinition = new Ec2TaskDefinition(ecsStack, 'UnitTest', {
+    family: 'seamless-taskdefinition-unittest',
+    networkMode: NetworkMode.BRIDGE,
+  });
+
+  // Add Docker volume
+  const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
+
+  unitTestTaskDefinition.addVolume({
+    name: 'seamless-efs-docker-volume',
+    dockerVolumeConfiguration,
+  });
+
+  // Add application container
+  const logDriver = createLogDriver();
+
+  const unitTestContainer = unitTestTaskDefinition.addContainer('unitTest', {
+    image: ContainerImage.fromAsset('./lib/assets/unit_test'),
+    cpu: 256,
+    memoryLimitMiB: 512,
+    logging: logDriver,
+  });
+
+  unitTestContainer.addMountPoints(createDockerVolumeMountPoint());
+
+  // Add sidecar logging container
+  const loggingContainer = createLoggingContainer(
+    'SeamlessLoggerUnitTest',
+    ecsStack,
+    unitTestTaskDefinition
+  );
+
+  return unitTestTaskDefinition;
+};
+
+// Build stage
+const createBuildTaskDefinition = (
+  ecsStack: NestedStack,
+  efsDnsName: string
+) => {
+  const buildTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Build', {
+    family: 'seamless-taskdefinition-build',
+    networkMode: NetworkMode.BRIDGE,
+  });
+
+  // Add Docker volume
+  const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
+
+  buildTaskDefinition.addVolume({
+    name: 'seamless-efs-docker-volume',
+    dockerVolumeConfiguration,
+  });
+
+  // Add application container
+  const logDriver = createLogDriver();
+
+  const buildContainer = buildTaskDefinition.addContainer('build', {
+    image: ContainerImage.fromAsset('./lib/assets/build'),
+    cpu: 256,
+    memoryLimitMiB: 512,
+    logging: logDriver,
+  });
+
+  buildContainer.addMountPoints(createDockerVolumeMountPoint());
+
+  // Add sidecar logging container
+  const loggingContainer = createLoggingContainer(
+    'SeamlessLoggerBuild',
+    ecsStack,
+    buildTaskDefinition
+  );
+
+  return buildTaskDefinition;
 };
 
 // Sample definitions for testing
@@ -162,6 +290,9 @@ const createFailureTaskDefinition = (ecsStack: NestedStack) => {
 
 export default {
   createPrepareTaskDefinition,
+  createCodeQualityTaskDefinition,
+  createUnitTestTaskDefinition,
+  createBuildTaskDefinition,
   createSuccessTaskDefinition,
   createFailureTaskDefinition,
 };

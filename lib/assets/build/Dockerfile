@@ -1,8 +1,4 @@
-FROM docker
-
-RUN apk update
-RUN apk add aws-cli
-
+FROM --platform=linux/amd64 bentolor/docker-dind-awscli
+USER root
 COPY commands.sh /
-CMD sh commands.sh
-VOLUME [ "/data" ]
+ENTRYPOINT ["/bin/sh", "/commands.sh"]

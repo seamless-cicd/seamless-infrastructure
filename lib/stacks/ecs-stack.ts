@@ -91,5 +91,18 @@ export class EcsStack extends NestedStack {
       this,
       efsDnsName
     );
+
+    this.codeQualityTaskDefinition =
+      taskDefinitions.createCodeQualityTaskDefinition(this, efsDnsName);
+
+    this.unitTestTaskDefinition = taskDefinitions.createUnitTestTaskDefinition(
+      this,
+      efsDnsName
+    );
+
+    this.buildTaskDefinition = taskDefinitions.createBuildTaskDefinition(
+      this,
+      efsDnsName
+    );
   }
 }

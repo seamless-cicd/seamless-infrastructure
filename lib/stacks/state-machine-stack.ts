@@ -14,7 +14,6 @@ import {
   PlacementStrategy,
   Ec2TaskDefinition,
 } from 'aws-cdk-lib/aws-ecs';
-import { SubnetType } from 'aws-cdk-lib/aws-ec2';
 import {
   SnsPublish,
   EcsRunTask,
@@ -173,9 +172,6 @@ export class StateMachineStack extends NestedStack {
           },
         ],
         resultPath: '$.lastTaskOutput',
-        // subnets: {
-        //   subnetType: SubnetType.PUBLIC,
-        // },
         launchTarget: new EcsEc2LaunchTarget({
           placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
         }),
@@ -192,18 +188,15 @@ export class StateMachineStack extends NestedStack {
 
     const codeQualityTask = createEcsRunTask(
       Stage.CODE_QUALITY,
-      props.sampleSuccessTaskDefinition
+      props.codeQualityTaskDefinition
     );
 
-    const testTask = createEcsRunTask(
+    const unitTestTask = createEcsRunTask(
       Stage.UNIT_TEST,
-      props.sampleSuccessTaskDefinition
+      props.unitTestTaskDefinition
     );
 
-    const buildTask = createEcsRunTask(
-      Stage.BUILD,
-      props.sampleSuccessTaskDefinition
-    );
+    const buildTask = createEcsRunTask(Stage.BUILD, props.buildTaskDefinition);
 
     const deployTask = createEcsRunTask(
       Stage.DEPLOY_PROD,
@@ -218,7 +211,7 @@ export class StateMachineStack extends NestedStack {
       .next(tasksOnSuccess(Stage.PREPARE))
       .next(codeQualityTask)
       .next(tasksOnSuccess(Stage.CODE_QUALITY))
-      .next(testTask)
+      .next(unitTestTask)
       .next(tasksOnSuccess(Stage.UNIT_TEST))
       .next(buildTask)
       .next(tasksOnSuccess(Stage.BUILD))
