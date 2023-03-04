@@ -3,12 +3,12 @@ import { Vpc, IVpc, IpAddresses, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { Construct } from 'constructs';
 
 export class VpcStack extends NestedStack {
-  public readonly vpc: IVpc;
+  readonly vpc: IVpc;
 
   constructor(scope: Construct, id: string, props?: NestedStackProps) {
     super(scope, id, props);
 
-    this.vpc = new Vpc(this, 'seamless-vpc', {
+    this.vpc = new Vpc(this, 'SeamlessVpc', {
       ipAddresses: IpAddresses.cidr('10.0.0.0/16'),
       maxAzs: 2,
       subnetConfiguration: [

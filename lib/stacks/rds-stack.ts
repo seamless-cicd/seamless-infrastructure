@@ -1,18 +1,32 @@
-import * as cdk from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as rds from 'aws-cdk-lib/aws-rds';
-import * as ssm from 'aws-cdk-lib/aws-ssm';
-import * as secretsManager from 'aws-cdk-lib/aws-secretsmanager';
+import { NestedStack, NestedStackProps, RemovalPolicy } from 'aws-cdk-lib';
+import {
+  IVpc,
+  SecurityGroup,
+  Peer,
+  Port,
+  SubnetType,
+  InstanceClass,
+  InstanceSize,
+  InstanceType,
+} from 'aws-cdk-lib/aws-ec2';
+import {
+  DatabaseInstance,
+  DatabaseInstanceEngine,
+  PostgresEngineVersion,
+  Credentials,
+} from 'aws-cdk-lib/aws-rds';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
+import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
 import { Construct } from 'constructs';
 
-export interface RdsStackProps extends cdk.NestedStackProps {
-  vpc: ec2.Vpc;
+export interface RdsStackProps extends NestedStackProps {
+  readonly vpc: IVpc;
 }
 
-export class RdsStack extends cdk.NestedStack {
-  rdsInstance: rds.DatabaseInstance;
-  rdsCredentialsSecret: secretsManager.Secret;
-  rdsSecurityGroup: ec2.SecurityGroup;
+export class RdsStack extends NestedStack {
+  readonly rdsInstance: DatabaseInstance;
+  readonly rdsCredentialsSecret: Secret;
+  readonly rdsSecurityGroup: SecurityGroup;
 
   constructor(scope: Construct, id: string, props?: RdsStackProps) {
     super(scope, id, props);
@@ -21,9 +35,9 @@ export class RdsStack extends cdk.NestedStack {
       throw new Error('VPC not found');
     }
 
-    this.rdsSecurityGroup = new ec2.SecurityGroup(
+    this.rdsSecurityGroup = new SecurityGroup(
       this,
-      'seamlessRdsSecurityGroup',
+      'SeamlessRdsSecurityGroup',
       {
         vpc: props.vpc,
         description: 'Security group for Seamless RDS',
@@ -31,15 +45,15 @@ export class RdsStack extends cdk.NestedStack {
     );
 
     this.rdsSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(5432),
+      Peer.anyIpv4(),
+      Port.tcp(5432),
       'Allow inbound traffic on 5432'
     );
 
     // Credentials secret
-    this.rdsCredentialsSecret = new secretsManager.Secret(
+    this.rdsCredentialsSecret = new Secret(
       this,
-      'seamlessRdsCredentialsSecret',
+      'SeamlessRdsCredentialsSecret',
       {
         secretName: `seamlessRdsCredentialsSecret`,
         generateSecretString: {
@@ -53,33 +67,33 @@ export class RdsStack extends cdk.NestedStack {
       }
     );
 
-    new ssm.StringParameter(this, 'rdsCredentialsSecretArn', {
+    new StringParameter(this, 'RdsCredentialsSecretArn', {
       parameterName: `rdsCredentialsSecretArn`,
       stringValue: this.rdsCredentialsSecret.secretArn,
     });
 
     // RDS database instance
-    this.rdsInstance = new rds.DatabaseInstance(this, 'seamlessRds', {
-      engine: rds.DatabaseInstanceEngine.postgres({
-        version: rds.PostgresEngineVersion.VER_14,
+    this.rdsInstance = new DatabaseInstance(this, 'SeamlessRds', {
+      engine: DatabaseInstanceEngine.postgres({
+        version: PostgresEngineVersion.VER_14,
       }),
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.BURSTABLE3,
-        ec2.InstanceSize.MICRO
+      instanceType: InstanceType.of(
+        InstanceClass.BURSTABLE3,
+        InstanceSize.MICRO
       ),
       vpc: props.vpc,
       vpcSubnets: {
-        subnetType: ec2.SubnetType.PUBLIC,
+        subnetType: SubnetType.PUBLIC,
       },
       databaseName: 'seamlessRds',
       securityGroups: [this.rdsSecurityGroup],
-      credentials: rds.Credentials.fromSecret(this.rdsCredentialsSecret),
+      credentials: Credentials.fromSecret(this.rdsCredentialsSecret),
       maxAllocatedStorage: 128,
       deletionProtection: false,
       storageEncrypted: true,
       allowMajorVersionUpgrade: false,
       autoMinorVersionUpgrade: false,
-      removalPolicy: cdk.RemovalPolicy.DESTROY,
+      removalPolicy: RemovalPolicy.DESTROY,
       publiclyAccessible: true,
     });
   }

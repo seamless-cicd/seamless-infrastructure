@@ -1,33 +1,48 @@
+import * as path from 'path';
+import { NestedStack, NestedStackProps, Tags } from 'aws-cdk-lib';
+import {
+  Vpc,
+  IVpc,
+  Instance,
+  InstanceType,
+  InstanceClass,
+  InstanceSize,
+  AmazonLinuxImage,
+  AmazonLinuxGeneration,
+  AmazonLinuxCpuType,
+  BlockDeviceVolume,
+  SecurityGroup,
+  CfnKeyPair,
+  Peer,
+  Port,
+  SubnetType,
+} from 'aws-cdk-lib/aws-ec2';
+import { Asset } from 'aws-cdk-lib/aws-s3-assets';
+import { Role, ServicePrincipal, ManagedPolicy } from 'aws-cdk-lib/aws-iam';
+import { Construct } from 'constructs';
+
 import { config } from 'dotenv';
 config();
 
-import * as path from 'path';
-import * as cdk from 'aws-cdk-lib';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as s3Assets from 'aws-cdk-lib/aws-s3-assets';
-import * as iam from 'aws-cdk-lib/aws-iam';
-
-import { Construct } from 'constructs';
-
-export interface EC2InstanceStackProps extends cdk.NestedStackProps {
-  vpc: ec2.Vpc;
+export interface EC2InstanceStackProps extends NestedStackProps {
+  readonly vpc: IVpc;
 }
 
-export class EC2InstanceStack extends cdk.NestedStack {
-  vpc: ec2.Vpc;
-  ec2Instance: ec2.Instance;
-  ec2InstanceInitScriptPath: string;
-  ec2InstanceInitScriptS3Asset: s3Assets.Asset;
-  ec2InstanceIAMRole: iam.Role;
-  ec2InstanceSecurityGroup: ec2.SecurityGroup;
+export class EC2InstanceStack extends NestedStack {
+  readonly vpc: Vpc;
+  readonly ec2Instance: Instance;
+  readonly ec2InstanceInitScriptPath: string;
+  readonly ec2InstanceInitScriptS3Asset: Asset;
+  readonly ec2InstanceIAMRole: Role;
+  readonly ec2InstanceSecurityGroup: SecurityGroup;
 
   constructor(scope: Construct, id: string, props?: EC2InstanceStackProps) {
     super(scope, id, props);
 
     // Create security group
-    this.ec2InstanceSecurityGroup = new ec2.SecurityGroup(
+    this.ec2InstanceSecurityGroup = new SecurityGroup(
       this,
-      'seamless-ec2-instance-security-group',
+      'SeamlessEc2InstanceSecurityGroup',
       {
         vpc: this.vpc,
         securityGroupName: 'seeamless-ec2-instance-security-group',
@@ -36,63 +51,58 @@ export class EC2InstanceStack extends cdk.NestedStack {
       }
     );
 
-    cdk.Tags.of(this.ec2InstanceSecurityGroup).add(
+    Tags.of(this.ec2InstanceSecurityGroup).add(
       'Name',
       'ec2-instance-security-group'
     );
 
     this.ec2InstanceSecurityGroup.addIngressRule(
-      ec2.Peer.anyIpv4(),
-      ec2.Port.tcp(22),
+      Peer.anyIpv4(),
+      Port.tcp(22),
       'allow SSH access'
     );
 
     // Create IAM Role
-    this.ec2InstanceIAMRole = new iam.Role(this, 'seamless-ec2-instance-role', {
+    this.ec2InstanceIAMRole = new Role(this, 'SeamlessEc2InstanceRole', {
       roleName: 'ec2-instance-role',
-      assumedBy: new iam.ServicePrincipal('ec2.amazonaws.com'),
+      assumedBy: new ServicePrincipal('amazonaws.com'),
       managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonSSMManagedInstanceCore'
-        ),
+        ManagedPolicy.fromAwsManagedPolicyName('AmazonSSMManagedInstanceCore'),
       ],
       inlinePolicies: {},
     });
 
     // Create a new key pair, to be used for SSH
-    const key = new ec2.CfnKeyPair(this, 'MyKeyPair', {
+    const key = new CfnKeyPair(this, 'MyKeyPair', {
       keyName: 'seamless-keypair',
     });
 
     // Create a new EC2 instance with 10GB EBS volume
-    this.ec2Instance = new ec2.Instance(this, 'seamless-ec2-instance', {
+    this.ec2Instance = new Instance(this, 'SeamlessEc2Instance', {
       vpc: this.vpc,
-      vpcSubnets: { subnetType: ec2.SubnetType.PUBLIC },
+      vpcSubnets: { subnetType: SubnetType.PUBLIC },
       securityGroup: this.ec2InstanceSecurityGroup,
       role: this.ec2InstanceIAMRole,
       keyName: key.keyName,
       instanceName: 'ec2-instance',
-      instanceType: ec2.InstanceType.of(
-        ec2.InstanceClass.T2,
-        ec2.InstanceSize.MICRO
-      ),
-      machineImage: new ec2.AmazonLinuxImage({
-        generation: ec2.AmazonLinuxGeneration.AMAZON_LINUX_2,
-        cpuType: ec2.AmazonLinuxCpuType.X86_64,
+      instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
+      machineImage: new AmazonLinuxImage({
+        generation: AmazonLinuxGeneration.AMAZON_LINUX_2,
+        cpuType: AmazonLinuxCpuType.X86_64,
       }),
       blockDevices: [
         {
           deviceName: '/dev/xvda',
-          volume: ec2.BlockDeviceVolume.ebs(10),
+          volume: BlockDeviceVolume.ebs(10),
         },
       ],
       userDataCausesReplacement: true,
     });
 
     // Upload initialization script to S3 and execute
-    this.ec2InstanceInitScriptS3Asset = new s3Assets.Asset(
+    this.ec2InstanceInitScriptS3Asset = new Asset(
       this,
-      'ec2-instance-init-script',
+      'Ec2InstanceInitScript',
       {
         path: path.join(__dirname, '../lib/scripts/initial-setup.sh'),
       }
