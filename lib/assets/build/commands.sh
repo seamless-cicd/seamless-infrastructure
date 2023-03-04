@@ -4,27 +4,18 @@ if ! [ -d "/data/app" ]; then
     exit 1
 fi
 
-# Extract repo name from the URL
-GITHUB_REPO_NAME="$(basename "$GITHUB_REPO_URL" .git)"
-
-# Check if repo name is valid
-if [ -z "$GITHUB_REPO_NAME" ]; then
-    echo "Error: could not determine repository name from GITHUB_REPO_URL"
-    exit 1
-fi
-
 # Check if Dockerfile exists
-DOCKERFILE="/data/app/$GITHUB_REPO_NAME/$DOCKERFILE_PATH/Dockerfile"
+DOCKERFILE_FILE_LOCATION="/data/app/$DOCKERFILE_PATH/Dockerfile"
 
-if ! [ -f $DOCKERFILE ]; then
-    echo "Error: Dockerfile not found at $DOCKERFILE"
+if ! [ -f $DOCKERFILE_FILE_LOCATION ]; then
+    echo "Error: Dockerfile not found at $DOCKERFILE_FILE_LOCATION"
     exit 1
 fi
 
 # Build the Docker image and tag it with the ECR repository name
 echo "Building Docker image"
 
-docker build -t $AWS_ECR_REPO $DOCKERFILE
+docker build -t $AWS_ECR_REPO /data/app/$DOCKERFILE_PATH
 
 # Check if the build succeeded
 if [ $? -eq 0 ]; then
