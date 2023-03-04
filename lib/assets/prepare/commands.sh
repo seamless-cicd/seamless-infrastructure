@@ -6,9 +6,9 @@ if [ -d "/data/app" ]; then
 fi
 
 # Clone repository from GitHub using personal access token
-echo "Cloning source code from $GH_REPO using $GH_PAT"
+echo "Cloning source code from $GITHUB_REPO_URL using $GITHUB_PAT"
 
-if git clone "$GH_REPO" "/data/app"; then
+if git clone "$GITHUB_REPO_URL" "/data/app"; then
     echo "Cloning succeeded"
 else
     echo "Cloning failed; deleting source code folder"

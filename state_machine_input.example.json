@@ -4,7 +4,7 @@
   "stageIds": {
     "prepare": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "codeQuality": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "test": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "unitTest": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "deployStaging": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "deployProduction": "182801d8-ba2d-11ed-afa1-0242ac120002"
   },
@@ -14,10 +14,10 @@
     "awsAccountId": "01234567912",
     "awsAccessKey": "012345679",
     "awsSecretAccessKey": "01234567912-ABCDEFG",
-    "ghPat": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "ghRepo": "https://github.com/user-org/repo-name.git",
+    "githubPat": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "githubRepoUrl": "https://github.com/user-org/repo-name.git",
     "codeQualityCommand": "npm run lint",
-    "testCommand": "npm run test",
+    "unitTestCommand": "npm run test",
     "dockerfilePath": ".",
     "awsEcsCluster": "my-ecs-cluster-name",
     "awsEcsService": "my-ecs-service-name",

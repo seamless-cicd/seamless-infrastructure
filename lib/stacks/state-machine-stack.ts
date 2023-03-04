@@ -134,12 +134,12 @@ export class StateMachineStack extends NestedStack {
                 value: JsonPath.stringAt('$.containerVariables.awsAccessKey'),
               },
               {
-                name: 'GH_PAT',
-                value: JsonPath.stringAt('$.containerVariables.ghPat'),
+                name: 'GITHUB_PAT',
+                value: JsonPath.stringAt('$.containerVariables.githubPat'),
               },
               {
-                name: 'GH_REPO',
-                value: JsonPath.stringAt('$.containerVariables.ghRepo'),
+                name: 'GITHUB_REPO_URL',
+                value: JsonPath.stringAt('$.containerVariables.githubRepoUrl'),
               },
               {
                 name: 'CODE_QUALITY_COMMAND',
@@ -148,19 +148,21 @@ export class StateMachineStack extends NestedStack {
                 ),
               },
               {
-                name: 'TEST_COMMAND',
-                value: JsonPath.stringAt('$.containerVariables.testCommand'),
+                name: 'UNIT_TEST_COMMAND',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.unitTestCommand'
+                ),
               },
               {
                 name: 'DOCKERFILE_PATH',
                 value: JsonPath.stringAt('$.containerVariables.dockerfilePath'),
               },
               {
-                name: 'AWS_FARGATE_CLUSTER',
+                name: 'AWS_ECS_CLUSTER',
                 value: JsonPath.stringAt('$.containerVariables.awsEcsCluster'),
               },
               {
-                name: 'AWS_FARGATE_SERVICE',
+                name: 'AWS_ECS_SERVICE',
                 value: JsonPath.stringAt('$.containerVariables.awsEcsService'),
               },
               {
