@@ -61,6 +61,7 @@ export class StateMachineStack extends cdk.NestedStack {
       return new tasks.SnsPublish(this, id, {
         topic: props.topic,
         message: sfn.TaskInput.fromObject(message),
+        resultPath: '$.lastTaskOutput',
       });
     };
 
@@ -162,6 +163,7 @@ export class StateMachineStack extends cdk.NestedStack {
             ],
           },
         ],
+        resultPath: '$.lastTaskOutput',
         subnets: {
           subnetType: ec2.SubnetType.PUBLIC,
         },
