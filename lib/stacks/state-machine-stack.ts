@@ -1,33 +1,52 @@
-import * as cdk from 'aws-cdk-lib';
-import * as sfn from 'aws-cdk-lib/aws-stepfunctions';
-import * as ecs from 'aws-cdk-lib/aws-ecs';
-import * as ec2 from 'aws-cdk-lib/aws-ec2';
-import * as tasks from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import { Construct } from 'constructs';
+import { NestedStack, NestedStackProps, Duration } from 'aws-cdk-lib';
+import {
+  StateMachine,
+  Pass,
+  Fail,
+  Succeed,
+  TaskInput,
+  IntegrationPattern,
+  JsonPath,
+} from 'aws-cdk-lib/aws-stepfunctions';
+import { Topic } from 'aws-cdk-lib/aws-sns';
+import {
+  Cluster,
+  PlacementStrategy,
+  Ec2TaskDefinition,
+} from 'aws-cdk-lib/aws-ecs';
+import { SubnetType } from 'aws-cdk-lib/aws-ec2';
+import {
+  SnsPublish,
+  EcsRunTask,
+  EcsEc2LaunchTarget,
+} from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
+import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
 config();
 
-export interface StateMachineStackProps extends cdk.NestedStackProps {
-  topic: cdk.aws_sns.Topic;
-  ecsCluster: ecs.Cluster;
-  prepareTaskDefinition: ecs.TaskDefinition;
-  codeQualityTaskDefinition: ecs.TaskDefinition;
-  testTaskDefinition: ecs.TaskDefinition;
-  buildTaskDefinition: ecs.TaskDefinition;
-  deployTaskDefinition: ecs.TaskDefinition;
-  sampleSuccessTaskDefinition: ecs.TaskDefinition;
-  sampleFailureTaskDefinition: ecs.TaskDefinition;
+export interface StateMachineStackProps extends NestedStackProps {
+  readonly topic: Topic;
+  readonly ecsCluster: Cluster;
+  readonly prepareTaskDefinition: Ec2TaskDefinition;
+  readonly codeQualityTaskDefinition: Ec2TaskDefinition;
+  readonly testTaskDefinition: Ec2TaskDefinition;
+  readonly buildTaskDefinition: Ec2TaskDefinition;
+  readonly deployTaskDefinition: Ec2TaskDefinition;
+  readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
+  readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
 }
 
 enum Stage {
   START = 'START',
   PREPARE = 'PREPARE',
   CODE_QUALITY = 'CODE_QUALITY',
-  TEST = 'TEST',
+  UNIT_TEST = 'UNIT_TEST',
   BUILD = 'BUILD',
-  DEPLOY = 'DEPLOY',
+  INTEGRATION_TEST = 'INTEGRATION_TEST',
+  DEPLOY_STAGING = 'DEPLOY_STAGING',
+  DEPLOY_PROD = 'DEPLOY_PROD',
 }
 
 enum StageStatus {
@@ -36,7 +55,7 @@ enum StageStatus {
 }
 
 // NOTE: State machine expects a particular JSON payload. See `/state_machine_input.example.json` for more information
-export class StateMachineStack extends cdk.NestedStack {
+export class StateMachineStack extends NestedStack {
   constructor(scope: Construct, id: string, props?: StateMachineStackProps) {
     super(scope, id, props);
 
@@ -54,13 +73,13 @@ export class StateMachineStack extends cdk.NestedStack {
     }
 
     // Placeholder starting state
-    const start = new sfn.Pass(this, 'Start');
+    const start = new Pass(this, 'Start');
 
     // SNS notification tasks
     const createNotificationState = (id: string, message: object) => {
-      return new tasks.SnsPublish(this, id, {
+      return new SnsPublish(this, id, {
         topic: props.topic,
-        message: sfn.TaskInput.fromObject(message),
+        message: TaskInput.fromObject(message),
         resultPath: '$.lastTaskOutput',
       });
     };
@@ -80,7 +99,7 @@ export class StateMachineStack extends cdk.NestedStack {
         status: StageStatus.FAILURE,
       });
 
-      return notifyFailure.next(new sfn.Fail(this, `Failure`));
+      return notifyFailure.next(new Fail(this, `Failure`));
     };
 
     const failureChain = tasksOnFailure();
@@ -89,10 +108,10 @@ export class StateMachineStack extends cdk.NestedStack {
     // Entire environment passed as input is injecteed into the task
     const createEcsRunTask = (
       stage: Stage,
-      taskDefinition: ecs.TaskDefinition
+      taskDefinition: Ec2TaskDefinition
     ) => {
-      return new tasks.EcsRunTask(this, stage, {
-        integrationPattern: sfn.IntegrationPattern.RUN_JOB,
+      return new EcsRunTask(this, stage, {
+        integrationPattern: IntegrationPattern.RUN_JOB,
         cluster: props.ecsCluster,
         taskDefinition,
         containerOverrides: [
@@ -102,73 +121,59 @@ export class StateMachineStack extends cdk.NestedStack {
             environment: [
               {
                 name: 'AWS_ACCOUNT_ID',
-                value: sfn.JsonPath.stringAt(
-                  '$.containerVariables.awsAccountId'
-                ),
+                value: JsonPath.stringAt('$.containerVariables.awsAccountId'),
               },
               {
                 name: 'AWS_ACCESS_KEY',
-                value: sfn.JsonPath.stringAt(
-                  '$.containerVariables.awsAccessKey'
-                ),
+                value: JsonPath.stringAt('$.containerVariables.awsAccessKey'),
               },
               {
                 name: 'AWS_SECRET_ACCESS_KEY',
-                value: sfn.JsonPath.stringAt(
-                  '$.containerVariables.awsAccessKey'
-                ),
+                value: JsonPath.stringAt('$.containerVariables.awsAccessKey'),
               },
               {
                 name: 'GH_PAT',
-                value: sfn.JsonPath.stringAt('$.containerVariables.ghPat'),
+                value: JsonPath.stringAt('$.containerVariables.ghPat'),
               },
               {
                 name: 'GH_REPO',
-                value: sfn.JsonPath.stringAt('$.containerVariables.ghRepo'),
+                value: JsonPath.stringAt('$.containerVariables.ghRepo'),
               },
               {
                 name: 'CODE_QUALITY_COMMAND',
-                value: sfn.JsonPath.stringAt(
+                value: JsonPath.stringAt(
                   '$.containerVariables.codeQualityCommand'
                 ),
               },
               {
                 name: 'TEST_COMMAND',
-                value: sfn.JsonPath.stringAt(
-                  '$.containerVariables.testCommand'
-                ),
+                value: JsonPath.stringAt('$.containerVariables.testCommand'),
               },
               {
                 name: 'DOCKERFILE_PATH',
-                value: sfn.JsonPath.stringAt(
-                  '$.containerVariables.dockerfilePath'
-                ),
+                value: JsonPath.stringAt('$.containerVariables.dockerfilePath'),
               },
               {
                 name: 'AWS_FARGATE_CLUSTER',
-                value: sfn.JsonPath.stringAt(
-                  '$.containerVariables.awsEcsCluster'
-                ),
+                value: JsonPath.stringAt('$.containerVariables.awsEcsCluster'),
               },
               {
                 name: 'AWS_FARGATE_SERVICE',
-                value: sfn.JsonPath.stringAt(
-                  '$.containerVariables.awsEcsService'
-                ),
+                value: JsonPath.stringAt('$.containerVariables.awsEcsService'),
               },
               {
                 name: 'AWS_ECR_REPO',
-                value: sfn.JsonPath.stringAt('$.containerVariables.awsEcrRepo'),
+                value: JsonPath.stringAt('$.containerVariables.awsEcrRepo'),
               },
             ],
           },
         ],
         resultPath: '$.lastTaskOutput',
         subnets: {
-          subnetType: ec2.SubnetType.PUBLIC,
+          subnetType: SubnetType.PUBLIC,
         },
-        launchTarget: new tasks.EcsEc2LaunchTarget({
-          placementStrategies: [ecs.PlacementStrategy.spreadAcrossInstances()],
+        launchTarget: new EcsEc2LaunchTarget({
+          placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
         }),
       }).addCatch(failureChain, {
         resultPath: '$.error',
@@ -187,7 +192,7 @@ export class StateMachineStack extends cdk.NestedStack {
     );
 
     const testTask = createEcsRunTask(
-      Stage.TEST,
+      Stage.UNIT_TEST,
       props.sampleSuccessTaskDefinition
     );
 
@@ -197,11 +202,11 @@ export class StateMachineStack extends cdk.NestedStack {
     );
 
     const deployTask = createEcsRunTask(
-      Stage.DEPLOY,
+      Stage.DEPLOY_PROD,
       props.sampleSuccessTaskDefinition
     );
 
-    const success = new sfn.Succeed(this, 'Success');
+    const success = new Succeed(this, 'Success');
 
     // Define the machine
     const definition = start
@@ -210,17 +215,17 @@ export class StateMachineStack extends cdk.NestedStack {
       .next(codeQualityTask)
       .next(tasksOnSuccess(Stage.CODE_QUALITY))
       .next(testTask)
-      .next(tasksOnSuccess(Stage.TEST))
+      .next(tasksOnSuccess(Stage.UNIT_TEST))
       .next(buildTask)
       .next(tasksOnSuccess(Stage.BUILD))
       .next(deployTask)
-      .next(tasksOnSuccess(Stage.DEPLOY))
+      .next(tasksOnSuccess(Stage.DEPLOY_PROD))
       .next(success);
 
     // Create a state machine that times out after 1 hour of runtime
-    new sfn.StateMachine(this, 'SeamlessStateMachine', {
+    new StateMachine(this, 'SeamlessStateMachine', {
       definition,
-      timeout: cdk.Duration.minutes(60),
+      timeout: Duration.minutes(60),
     });
   }
 }

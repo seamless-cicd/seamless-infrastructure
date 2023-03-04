@@ -15,33 +15,33 @@ export class SeamlessStack extends Stack {
     super(scope, id, props);
 
     // VPC
-    const vpcStack = new VpcStack(this, 'seamless-vpc');
+    const vpcStack = new VpcStack(this, 'SeamlessVpc');
 
     // EFS
-    const efsStack = new EfsStack(this, 'seamless-efs', { vpc: vpcStack.vpc });
+    const efsStack = new EfsStack(this, 'SeamlessEfs', { vpc: vpcStack.vpc });
     efsStack.addDependency(vpcStack);
 
     // SNS
-    const snsStack = new SnsStack(this, 'seamless-sns', {
+    const snsStack = new SnsStack(this, 'SeamlessSns', {
       snsSubscriberUrl: process.env.SNS_SUBSCRIBER_URL,
     });
 
     // ECS
-    const ecsStack = new EcsStack(this, 'seamless-ecs', {
+    const ecsStack = new EcsStack(this, 'SeamlessEcs', {
       vpc: vpcStack.vpc,
     });
 
     ecsStack.addDependency(vpcStack);
 
     // RDS
-    // const rdsStack = new RdsStack(this, 'seamless-rds', {
+    // const rdsStack = new RdsStack(this, 'SeamlessRds', {
     //   vpc: vpcStack.vpc,
     // });
 
     // State machine
     const stateMachineStack = new StateMachineStack(
       this,
-      'seamless-state-machine',
+      'SeamlessStateMachine',
       {
         topic: snsStack.topic,
         ecsCluster: ecsStack.cluster,

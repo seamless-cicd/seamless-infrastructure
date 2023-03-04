@@ -10,11 +10,11 @@ import {
 } from 'aws-cdk-lib/aws-efs';
 
 interface EfsStackProps extends NestedStackProps {
-  vpc: IVpc;
+  readonly vpc: IVpc;
 }
 
 export class EfsStack extends NestedStack {
-  public readonly efs: FileSystem;
+  readonly efs: FileSystem;
 
   constructor(scope: Construct, id: string, props: EfsStackProps) {
     super(scope, id, props);
@@ -25,9 +25,9 @@ export class EfsStack extends NestedStack {
     }
 
     // Create file system to serve as shared Docker volume
-    this.efs = new FileSystem(this, 'seamless-efs', {
+    this.efs = new FileSystem(this, 'SeamlessEfs', {
       vpc: props.vpc,
-      fileSystemName: 'SeamlessEFS',
+      fileSystemName: 'SeamlessEfs',
       enableAutomaticBackups: true,
       encrypted: true,
       performanceMode: PerformanceMode.GENERAL_PURPOSE,
