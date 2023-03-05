@@ -5,6 +5,7 @@
     "prepare": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "codeQuality": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "unitTest": "182801d8-ba2d-11ed-afa1-0242ac120002",
+    "build": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "deployStaging": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "deployProduction": "182801d8-ba2d-11ed-afa1-0242ac120002"
   },
