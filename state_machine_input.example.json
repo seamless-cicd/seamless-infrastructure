@@ -11,6 +11,7 @@
   "runFull": "true",
   "autoDeploy": "false",
   "containerVariables": {
+    "awsRegion": "us-east-1",
     "awsAccountId": "01234567912",
     "awsAccessKey": "012345679",
     "awsSecretAccessKey": "01234567912-ABCDEFG",

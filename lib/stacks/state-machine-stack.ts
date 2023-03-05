@@ -121,6 +121,10 @@ export class StateMachineStack extends NestedStack {
               taskDefinition.defaultContainer as ContainerDefinition,
             environment: [
               {
+                name: 'AWS_REGION',
+                value: JsonPath.stringAt('$.containerVariables.awsRegion'),
+              },
+              {
                 name: 'AWS_ACCOUNT_ID',
                 value: JsonPath.stringAt('$.containerVariables.awsAccountId'),
               },

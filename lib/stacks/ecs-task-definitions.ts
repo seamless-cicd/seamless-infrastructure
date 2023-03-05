@@ -11,6 +11,14 @@ import {
   FirelensLogRouter,
   FirelensLogRouterType,
 } from 'aws-cdk-lib/aws-ecs';
+import {
+  PolicyStatement,
+  PolicyDocument,
+  Policy,
+  Role,
+  ServicePrincipal,
+  Effect,
+} from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
@@ -212,9 +220,26 @@ const createBuildTaskDefinition = (
   ecsStack: NestedStack,
   efsDnsName: string
 ) => {
+  // IAM policy statement for full access to ECR
+  const ecrFullAccessPolicyDocument = new PolicyDocument({
+    statements: [
+      new PolicyStatement({
+        effect: Effect.ALLOW,
+        actions: ['ecr:*'],
+        resources: ['*'],
+      }),
+    ],
+  });
+
   const buildTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Build', {
     family: 'seamless-taskdefinition-build',
     networkMode: NetworkMode.BRIDGE,
+    taskRole: new Role(ecsStack, 'EcrFullAccessTaskRole', {
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+      inlinePolicies: {
+        EcrFullAccess: ecrFullAccessPolicyDocument,
+      },
+    }),
   });
 
   // Add Docker volume
@@ -223,6 +248,14 @@ const createBuildTaskDefinition = (
   buildTaskDefinition.addVolume({
     name: 'seamless-efs-docker-volume',
     dockerVolumeConfiguration,
+  });
+
+  // Add bind mount host volume
+  buildTaskDefinition.addVolume({
+    name: 'docker-socket',
+    host: {
+      sourcePath: '/var/run/docker.sock',
+    },
   });
 
   // Add application container
@@ -235,7 +268,15 @@ const createBuildTaskDefinition = (
     logging: logDriver,
   });
 
+  // Add mount points to container
+  const dockerSocketMountPoint: MountPoint = {
+    sourceVolume: 'docker-socket',
+    containerPath: '/var/run/docker.sock',
+    readOnly: false,
+  };
+
   buildContainer.addMountPoints(createDockerVolumeMountPoint());
+  buildContainer.addMountPoints(dockerSocketMountPoint);
 
   // Add sidecar logging container
   const loggingContainer = createLoggingContainer(

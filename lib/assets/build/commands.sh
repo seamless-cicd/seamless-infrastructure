@@ -5,10 +5,8 @@ if ! [ -d "/data/app" ]; then
 fi
 
 # Check if Dockerfile exists
-DOCKERFILE_FILE_LOCATION="/data/app/$DOCKERFILE_PATH/Dockerfile"
-
-if ! [ -f $DOCKERFILE_FILE_LOCATION ]; then
-    echo "Error: Dockerfile not found at $DOCKERFILE_FILE_LOCATION"
+if ! [ -f "/data/app/$DOCKERFILE_PATH/Dockerfile" ]; then
+    echo "Error: Dockerfile not found at /data/app/$DOCKERFILE_PATH/Dockerfile"
     exit 1
 fi
 
@@ -28,13 +26,13 @@ fi
 # Login to AWS
 echo "Logging into AWS"
 
-LOGIN_PASSWORD="$(aws ecr get-login-password --region $AWS_DEFAULT_REGION)"
+LOGIN_PASSWORD="$(aws ecr get-login-password --region $AWS_REGION)"
 if [ $? -ne 0 ]; then
     echo "Error: failed to get ECR login password"
     exit 1
 fi
 
-echo "$LOGIN_PASSWORD" | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com
+echo "$LOGIN_PASSWORD" | docker login --username AWS --password-stdin $AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com
 
 # Check if the ECR repository exists
 aws ecr describe-repositories --repository-names $AWS_ECR_REPO > /dev/null 2>&1
@@ -48,7 +46,7 @@ else
 fi
 
 # Tag image
-FULL_ECR_TAG="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_DEFAULT_REGION.amazonaws.com/$AWS_ECR_REPO:latest"
+FULL_ECR_TAG="$AWS_ACCOUNT_ID.dkr.ecr.$AWS_REGION.amazonaws.com/$AWS_ECR_REPO:latest"
 docker tag $AWS_ECR_REPO:latest $FULL_ECR_TAG
 
 # Push image
