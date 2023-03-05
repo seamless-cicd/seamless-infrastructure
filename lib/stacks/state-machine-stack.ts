@@ -39,8 +39,7 @@ export interface StateMachineStackProps extends NestedStackProps {
   readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
 }
 
-enum Stage {
-  START = 'START',
+enum StageType {
   PREPARE = 'PREPARE',
   CODE_QUALITY = 'CODE_QUALITY',
   UNIT_TEST = 'UNIT_TEST',
@@ -48,22 +47,25 @@ enum Stage {
   INTEGRATION_TEST = 'INTEGRATION_TEST',
   DEPLOY_STAGING = 'DEPLOY_STAGING',
   DEPLOY_PROD = 'DEPLOY_PROD',
+  OTHER = 'OTHER',
 }
 
-enum StageStatus {
-  SUCCESS = 'STAGE_SUCCESS',
-  FAILURE = 'STAGE_FAILURE',
+enum Status {
+  SUCCESS = 'SUCCESS',
+  FAILURE = 'FAILURE',
+  IN_PROGRESS = 'IN_PROGRESS',
+  IDLE = 'IDLE',
 }
 
 const stageEnumToId = {
-  [Stage.START]: 'start',
-  [Stage.PREPARE]: 'prepare',
-  [Stage.CODE_QUALITY]: 'codeQuality',
-  [Stage.UNIT_TEST]: 'unitTest',
-  [Stage.BUILD]: 'build',
-  [Stage.INTEGRATION_TEST]: 'integrationTest',
-  [Stage.DEPLOY_STAGING]: 'deployStaging',
-  [Stage.DEPLOY_PROD]: 'deployProduction',
+  [StageType.PREPARE]: 'prepare',
+  [StageType.CODE_QUALITY]: 'codeQuality',
+  [StageType.UNIT_TEST]: 'unitTest',
+  [StageType.BUILD]: 'build',
+  [StageType.INTEGRATION_TEST]: 'integrationTest',
+  [StageType.DEPLOY_STAGING]: 'deployStaging',
+  [StageType.DEPLOY_PROD]: 'deployProduction',
+  [StageType.OTHER]: 'deployProduction',
 };
 
 // NOTE: State machine expects a particular JSON payload. See `/state_machine_input.example.json` for more information
@@ -87,6 +89,20 @@ export class StateMachineStack extends NestedStack {
     // Placeholder starting state
     const start = new Pass(this, 'Start');
 
+    // Stage transitions
+    const createStageTransition = (
+      lastStage: StageType | null,
+      currentStage: StageType | null
+    ) => {
+      return new Pass(this, `Transition: ${lastStage} -> ${currentStage}`, {
+        result: TaskInput.fromObject({
+          lastStage,
+          currentStage,
+        }),
+        resultPath: '$.stages',
+      });
+    };
+
     // SNS notification tasks
     const createNotificationState = (id: string, message: object) => {
       return new SnsPublish(this, id, {
@@ -97,9 +113,9 @@ export class StateMachineStack extends NestedStack {
     };
 
     // Define actions to run on a stage success
-    const tasksOnSuccess = (stage: Stage) => {
+    const tasksOnSuccess = (stage: StageType) => {
       const notifySuccess = createNotificationState(`Notify ${stage} Success`, {
-        status: StageStatus.SUCCESS,
+        status: Status.SUCCESS,
       });
 
       return notifySuccess;
@@ -108,7 +124,7 @@ export class StateMachineStack extends NestedStack {
     // Define actions to run on a stage failure
     const tasksOnFailure = () => {
       const notifyFailure = createNotificationState(`Notify Pipeline Failure`, {
-        status: StageStatus.FAILURE,
+        status: Status.FAILURE,
       });
 
       return notifyFailure.next(new Fail(this, `Failure`));
@@ -119,7 +135,7 @@ export class StateMachineStack extends NestedStack {
     // Create an ECS run task with a given task definition
     // Entire environment passed as input is injecteed into the task
     const createEcsRunTask = (
-      stage: Stage,
+      stage: StageType,
       taskDefinition: Ec2TaskDefinition
     ) => {
       return new EcsRunTask(this, stage, {
@@ -201,24 +217,27 @@ export class StateMachineStack extends NestedStack {
 
     // Swap out task definitions as you go
     const prepareTask = createEcsRunTask(
-      Stage.PREPARE,
+      StageType.PREPARE,
       props.prepareTaskDefinition
     );
 
     const codeQualityTask = createEcsRunTask(
-      Stage.CODE_QUALITY,
+      StageType.CODE_QUALITY,
       props.codeQualityTaskDefinition
     );
 
     const unitTestTask = createEcsRunTask(
-      Stage.UNIT_TEST,
+      StageType.UNIT_TEST,
       props.unitTestTaskDefinition
     );
 
-    const buildTask = createEcsRunTask(Stage.BUILD, props.buildTaskDefinition);
+    const buildTask = createEcsRunTask(
+      StageType.BUILD,
+      props.buildTaskDefinition
+    );
 
     const deployTask = createEcsRunTask(
-      Stage.DEPLOY_PROD,
+      StageType.DEPLOY_PROD,
       props.sampleSuccessTaskDefinition
     );
 
@@ -226,16 +245,22 @@ export class StateMachineStack extends NestedStack {
 
     // Define the machine
     const definition = start
+      .next(createStageTransition(null, StageType.PREPARE))
       .next(prepareTask)
-      .next(tasksOnSuccess(Stage.PREPARE))
+      .next(tasksOnSuccess(StageType.PREPARE))
+      .next(createStageTransition(StageType.PREPARE, StageType.CODE_QUALITY))
       .next(codeQualityTask)
-      .next(tasksOnSuccess(Stage.CODE_QUALITY))
+      .next(tasksOnSuccess(StageType.CODE_QUALITY))
+      .next(createStageTransition(StageType.CODE_QUALITY, StageType.UNIT_TEST))
       .next(unitTestTask)
-      .next(tasksOnSuccess(Stage.UNIT_TEST))
+      .next(tasksOnSuccess(StageType.UNIT_TEST))
+      .next(createStageTransition(StageType.UNIT_TEST, StageType.BUILD))
       .next(buildTask)
-      .next(tasksOnSuccess(Stage.BUILD))
+      .next(tasksOnSuccess(StageType.BUILD))
+      .next(createStageTransition(StageType.BUILD, StageType.DEPLOY_PROD))
       .next(deployTask)
-      .next(tasksOnSuccess(Stage.DEPLOY_PROD))
+      .next(tasksOnSuccess(StageType.DEPLOY_PROD))
+      .next(createStageTransition(StageType.DEPLOY_PROD, null))
       .next(success);
 
     // Create a state machine that times out after 1 hour of runtime
