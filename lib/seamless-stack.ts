@@ -29,6 +29,7 @@ export class SeamlessStack extends Stack {
     // ECS
     const ecsStack = new EcsStack(this, 'SeamlessEcs', {
       vpc: vpcStack.vpc,
+      efs: efsStack.efs,
     });
 
     ecsStack.addDependency(vpcStack);
@@ -49,9 +50,11 @@ export class SeamlessStack extends Stack {
         sampleFailureTaskDefinition: ecsStack.sampleFailureTaskDefinition,
         prepareTaskDefinition: ecsStack.prepareTaskDefinition,
         codeQualityTaskDefinition: ecsStack.codeQualityTaskDefinition,
-        testTaskDefinition: ecsStack.testTaskDefinition,
+        unitTestTaskDefinition: ecsStack.unitTestTaskDefinition,
         buildTaskDefinition: ecsStack.buildTaskDefinition,
-        deployTaskDefinition: ecsStack.deployTaskDefinition,
+        integrationTestTaskDefinition: ecsStack.integrationTestTaskDefinition,
+        deployStagingTaskDefinition: ecsStack.deployStagingTaskDefinition,
+        deployProdTaskDefinition: ecsStack.deployProdTaskDefinition,
       }
     );
 

@@ -14,7 +14,6 @@ import {
   PlacementStrategy,
   Ec2TaskDefinition,
 } from 'aws-cdk-lib/aws-ecs';
-import { SubnetType } from 'aws-cdk-lib/aws-ec2';
 import {
   SnsPublish,
   EcsRunTask,
@@ -31,9 +30,11 @@ export interface StateMachineStackProps extends NestedStackProps {
   readonly ecsCluster: Cluster;
   readonly prepareTaskDefinition: Ec2TaskDefinition;
   readonly codeQualityTaskDefinition: Ec2TaskDefinition;
-  readonly testTaskDefinition: Ec2TaskDefinition;
+  readonly unitTestTaskDefinition: Ec2TaskDefinition;
   readonly buildTaskDefinition: Ec2TaskDefinition;
-  readonly deployTaskDefinition: Ec2TaskDefinition;
+  readonly integrationTestTaskDefinition: Ec2TaskDefinition;
+  readonly deployStagingTaskDefinition: Ec2TaskDefinition;
+  readonly deployProdTaskDefinition: Ec2TaskDefinition;
   readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
   readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
 }
@@ -120,6 +121,10 @@ export class StateMachineStack extends NestedStack {
               taskDefinition.defaultContainer as ContainerDefinition,
             environment: [
               {
+                name: 'AWS_REGION',
+                value: JsonPath.stringAt('$.containerVariables.awsRegion'),
+              },
+              {
                 name: 'AWS_ACCOUNT_ID',
                 value: JsonPath.stringAt('$.containerVariables.awsAccountId'),
               },
@@ -132,12 +137,12 @@ export class StateMachineStack extends NestedStack {
                 value: JsonPath.stringAt('$.containerVariables.awsAccessKey'),
               },
               {
-                name: 'GH_PAT',
-                value: JsonPath.stringAt('$.containerVariables.ghPat'),
+                name: 'GITHUB_PAT',
+                value: JsonPath.stringAt('$.containerVariables.githubPat'),
               },
               {
-                name: 'GH_REPO',
-                value: JsonPath.stringAt('$.containerVariables.ghRepo'),
+                name: 'GITHUB_REPO_URL',
+                value: JsonPath.stringAt('$.containerVariables.githubRepoUrl'),
               },
               {
                 name: 'CODE_QUALITY_COMMAND',
@@ -146,19 +151,21 @@ export class StateMachineStack extends NestedStack {
                 ),
               },
               {
-                name: 'TEST_COMMAND',
-                value: JsonPath.stringAt('$.containerVariables.testCommand'),
+                name: 'UNIT_TEST_COMMAND',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.unitTestCommand'
+                ),
               },
               {
                 name: 'DOCKERFILE_PATH',
                 value: JsonPath.stringAt('$.containerVariables.dockerfilePath'),
               },
               {
-                name: 'AWS_FARGATE_CLUSTER',
+                name: 'AWS_ECS_CLUSTER',
                 value: JsonPath.stringAt('$.containerVariables.awsEcsCluster'),
               },
               {
-                name: 'AWS_FARGATE_SERVICE',
+                name: 'AWS_ECS_SERVICE',
                 value: JsonPath.stringAt('$.containerVariables.awsEcsService'),
               },
               {
@@ -169,9 +176,6 @@ export class StateMachineStack extends NestedStack {
           },
         ],
         resultPath: '$.lastTaskOutput',
-        subnets: {
-          subnetType: SubnetType.PUBLIC,
-        },
         launchTarget: new EcsEc2LaunchTarget({
           placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
         }),
@@ -183,23 +187,20 @@ export class StateMachineStack extends NestedStack {
     // Swap out task definitions as you go
     const prepareTask = createEcsRunTask(
       Stage.PREPARE,
-      props.sampleSuccessTaskDefinition
+      props.prepareTaskDefinition
     );
 
     const codeQualityTask = createEcsRunTask(
       Stage.CODE_QUALITY,
-      props.sampleSuccessTaskDefinition
+      props.codeQualityTaskDefinition
     );
 
-    const testTask = createEcsRunTask(
+    const unitTestTask = createEcsRunTask(
       Stage.UNIT_TEST,
-      props.sampleSuccessTaskDefinition
+      props.unitTestTaskDefinition
     );
 
-    const buildTask = createEcsRunTask(
-      Stage.BUILD,
-      props.sampleSuccessTaskDefinition
-    );
+    const buildTask = createEcsRunTask(Stage.BUILD, props.buildTaskDefinition);
 
     const deployTask = createEcsRunTask(
       Stage.DEPLOY_PROD,
@@ -214,7 +215,7 @@ export class StateMachineStack extends NestedStack {
       .next(tasksOnSuccess(Stage.PREPARE))
       .next(codeQualityTask)
       .next(tasksOnSuccess(Stage.CODE_QUALITY))
-      .next(testTask)
+      .next(unitTestTask)
       .next(tasksOnSuccess(Stage.UNIT_TEST))
       .next(buildTask)
       .next(tasksOnSuccess(Stage.BUILD))

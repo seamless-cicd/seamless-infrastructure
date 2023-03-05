@@ -1,4 +1,4 @@
 echo "Displaying some env variables"
-echo "$GH_REPO"
+echo "$GITHUB_REPO_URL"
 echo "$CODE_QUALITY_COMMAND"
-echo "$TEST_COMMAND"
+echo "$UNIT_TEST_COMMAND"

@@ -11,16 +11,17 @@ import {
   EcsOptimizedImage,
   AsgCapacityProvider,
   Ec2TaskDefinition,
-  NetworkMode,
-  ContainerImage,
-  AwsLogDriver,
 } from 'aws-cdk-lib/aws-ecs';
+import { FileSystem } from 'aws-cdk-lib/aws-efs';
 import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import { Construct } from 'constructs';
 
+import taskDefinitions from './ecs-task-definitions';
+
 export interface EcsStackProps extends NestedStackProps {
   readonly vpc: IVpc;
+  readonly efs: FileSystem;
 }
 
 export class EcsStack extends NestedStack {
@@ -29,9 +30,11 @@ export class EcsStack extends NestedStack {
   readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
   readonly prepareTaskDefinition: Ec2TaskDefinition;
   readonly codeQualityTaskDefinition: Ec2TaskDefinition;
-  readonly testTaskDefinition: Ec2TaskDefinition;
+  readonly unitTestTaskDefinition: Ec2TaskDefinition;
   readonly buildTaskDefinition: Ec2TaskDefinition;
-  readonly deployTaskDefinition: Ec2TaskDefinition;
+  readonly integrationTestTaskDefinition: Ec2TaskDefinition;
+  readonly deployStagingTaskDefinition: Ec2TaskDefinition;
+  readonly deployProdTaskDefinition: Ec2TaskDefinition;
 
   constructor(scope: Construct, id: string, props?: EcsStackProps) {
     super(scope, id, props);
@@ -74,105 +77,32 @@ export class EcsStack extends NestedStack {
 
     this.cluster.addAsgCapacityProvider(capacityProvider);
 
-    // Sample task definitions for use in AWS step functions
-    this.sampleSuccessTaskDefinition = new Ec2TaskDefinition(
-      this,
-      'SampleSuccess',
-      {
-        family: 'sample-success-task-definition',
-        networkMode: NetworkMode.AWS_VPC,
-      }
-    );
+    // Task definitions
+    const efsDnsName = `${props.efs.fileSystemId}.efs.${this.region}.amazonaws.com`;
 
-    this.sampleSuccessTaskDefinition.addContainer('SampleSuccess', {
-      image: ContainerImage.fromAsset('./lib/assets/sample_success'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({ streamPrefix: 'sample-success' }),
-    });
-
-    this.sampleFailureTaskDefinition = new Ec2TaskDefinition(
-      this,
-      'SampleFailure',
-      {
-        family: 'sample-failure-task-definition',
-        networkMode: NetworkMode.AWS_VPC,
-      }
-    );
-
-    this.sampleFailureTaskDefinition.addContainer('SampleFailure', {
-      image: ContainerImage.fromAsset('./lib/assets/sample_failure'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({ streamPrefix: 'sample-failure' }),
-    });
+    // Sample task definitions
+    this.sampleSuccessTaskDefinition =
+      taskDefinitions.createSuccessTaskDefinition(this);
+    this.sampleFailureTaskDefinition =
+      taskDefinitions.createFailureTaskDefinition(this);
 
     // Pipeline stage executor task definitions
-
-    /*
-    this.prepareTaskDefinition = new Ec2TaskDefinition(this, 'Prepare', {
-      family: 'prepare-task-definition',
-      networkMode: NetworkMode.AWS_VPC,
-    });
-
-    this.prepareTaskDefinition.addContainer('prepare', {
-      image: ContainerImage.fromAsset('./lib/assets/prepare'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({ streamPrefix: 'prepare' }),
-    });
-
-    this.codeQualityTaskDefinition = new Ec2TaskDefinition(
+    this.prepareTaskDefinition = taskDefinitions.createPrepareTaskDefinition(
       this,
-      'Code Quality',
-      {
-        family: 'code-quality-task-definition',
-        networkMode: NetworkMode.AWS_VPC,
-      }
+      efsDnsName
     );
 
-    this.codeQualityTaskDefinition.addContainer('code-quality', {
-      image: ContainerImage.fromAsset('./lib/assets/code_quality'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({ streamPrefix: 'code-quality' }),
-    });
+    this.codeQualityTaskDefinition =
+      taskDefinitions.createCodeQualityTaskDefinition(this, efsDnsName);
 
-    this.testTaskDefinition = new Ec2TaskDefinition(this, 'Test', {
-      family: 'test-task-definition',
-      networkMode: NetworkMode.AWS_VPC,
-    });
+    this.unitTestTaskDefinition = taskDefinitions.createUnitTestTaskDefinition(
+      this,
+      efsDnsName
+    );
 
-    this.testTaskDefinition.addContainer('test', {
-      image: ContainerImage.fromAsset('./lib/assets/test'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({ streamPrefix: 'test' }),
-    });
-
-    this.buildTaskDefinition = new Ec2TaskDefinition(this, 'Build', {
-      family: 'build-task-definition',
-      networkMode: NetworkMode.AWS_VPC,
-    });
-
-    this.buildTaskDefinition.addContainer('build', {
-      image: ContainerImage.fromAsset('./lib/assets/build'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({ streamPrefix: 'build' }),
-    });
-
-    this.deployTaskDefinition = new Ec2TaskDefinition(this, 'Deploy', {
-      family: 'deploy-task-definition',
-      networkMode: NetworkMode.AWS_VPC,
-    });
-
-    this.deployTaskDefinition.addContainer('deploy', {
-      image: ContainerImage.fromAsset('./lib/assets/deploy'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({ streamPrefix: 'deploy' }),
-    });
-    */
+    this.buildTaskDefinition = taskDefinitions.createBuildTaskDefinition(
+      this,
+      efsDnsName
+    );
   }
 }
