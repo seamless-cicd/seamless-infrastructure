@@ -55,6 +55,17 @@ enum StageStatus {
   FAILURE = 'STAGE_FAILURE',
 }
 
+const stageEnumToId = {
+  [Stage.START]: 'start',
+  [Stage.PREPARE]: 'prepare',
+  [Stage.CODE_QUALITY]: 'codeQuality',
+  [Stage.UNIT_TEST]: 'unitTest',
+  [Stage.BUILD]: 'build',
+  [Stage.INTEGRATION_TEST]: 'integrationTest',
+  [Stage.DEPLOY_STAGING]: 'deployStaging',
+  [Stage.DEPLOY_PROD]: 'deployProduction',
+};
+
 // NOTE: State machine expects a particular JSON payload. See `/state_machine_input.example.json` for more information
 export class StateMachineStack extends NestedStack {
   constructor(scope: Construct, id: string, props?: StateMachineStackProps) {
@@ -120,6 +131,10 @@ export class StateMachineStack extends NestedStack {
             containerDefinition:
               taskDefinition.defaultContainer as ContainerDefinition,
             environment: [
+              {
+                name: 'STAGE_ID',
+                value: JsonPath.stringAt(`$.stageIds.${stageEnumToId[stage]}`),
+              },
               {
                 name: 'AWS_REGION',
                 value: JsonPath.stringAt('$.containerVariables.awsRegion'),

@@ -10,11 +10,11 @@ import {
   FireLensLogDriver,
   FirelensLogRouter,
   FirelensLogRouterType,
+  FirelensConfigFileType,
 } from 'aws-cdk-lib/aws-ecs';
 import {
   PolicyStatement,
   PolicyDocument,
-  Policy,
   Role,
   ServicePrincipal,
   Effect,
@@ -55,16 +55,16 @@ const createLoggingContainer = (
   taskDefinition: Ec2TaskDefinition
 ): FirelensLogRouter => {
   return new FirelensLogRouter(scope, containerName, {
-    memoryLimitMiB: 256,
+    image: ContainerImage.fromRegistry(
+      'public.ecr.aws/aws-observability/aws-for-fluent-bit:latest'
+    ),
     firelensConfig: {
       type: FirelensLogRouterType.FLUENTBIT,
       options: {
         enableECSLogMetadata: true,
       },
     },
-    image: ContainerImage.fromRegistry(
-      'public.ecr.aws/aws-observability/aws-for-fluent-bit:latest'
-    ),
+    memoryLimitMiB: 256,
     taskDefinition,
   });
 };
