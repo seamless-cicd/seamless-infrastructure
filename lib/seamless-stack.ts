@@ -35,9 +35,9 @@ export class SeamlessStack extends Stack {
     ecsStack.addDependency(vpcStack);
 
     // RDS
-    // const rdsStack = new RdsStack(this, 'SeamlessRds', {
-    //   vpc: vpcStack.vpc,
-    // });
+    const rdsStack = new RdsStack(this, 'SeamlessRds', {
+      vpc: vpcStack.vpc,
+    });
 
     // State machine
     const stateMachineStack = new StateMachineStack(
@@ -60,6 +60,6 @@ export class SeamlessStack extends Stack {
 
     stateMachineStack.addDependency(snsStack);
     stateMachineStack.addDependency(ecsStack);
-    // stateMachineStack.addDependency(rdsStack);
+    stateMachineStack.addDependency(rdsStack);
   }
 }
