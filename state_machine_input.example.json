@@ -15,33 +15,33 @@
     "commitMessage": "My commit message",
     "committer": "Jason Wang",
     "triggerType": "MAIN",
-    "stages": [
-      {
+    "stages": {
+      "prepare": {
         "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
         "type": "PREPARE",
         "status": "IDLE"
       },
-      {
+      "codeQuality": {
         "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
         "type": "CODE_QUALITY",
         "status": "IDLE"
       },
-      {
+      "unitTest": {
         "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
         "type": "UNIT_TEST",
         "status": "IDLE"
       },
-      {
+      "build": {
         "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
         "type": "BUILD",
         "status": "IDLE"
       },
-      {
+      "deployProd": {
         "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
         "type": "DEPLOY_PROD",
         "status": "IDLE"
       }
-    ]
+    }
   },
   "runFull": "true",
   "autoDeploy": "false",
