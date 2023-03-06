@@ -9,6 +9,40 @@
     "deployStaging": "182801d8-ba2d-11ed-afa1-0242ac120002",
     "deployProduction": "182801d8-ba2d-11ed-afa1-0242ac120002"
   },
+  "runData": {
+    "status": "IDLE",
+    "commitHash": "abc234",
+    "commitMessage": "My commit message",
+    "committer": "Jason Wang",
+    "triggerType": "MAIN",
+    "stages": [
+      {
+        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "type": "PREPARE",
+        "status": "IDLE"
+      },
+      {
+        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "type": "CODE_QUALITY",
+        "status": "IDLE"
+      },
+      {
+        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "type": "UNIT_TEST",
+        "status": "IDLE"
+      },
+      {
+        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "type": "BUILD",
+        "status": "IDLE"
+      },
+      {
+        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "type": "DEPLOY_PROD",
+        "status": "IDLE"
+      }
+    ]
+  },
   "runFull": "true",
   "autoDeploy": "false",
   "containerVariables": {
