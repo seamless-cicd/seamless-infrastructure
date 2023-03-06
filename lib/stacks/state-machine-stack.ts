@@ -20,7 +20,6 @@ import {
   SnsPublish,
   EcsRunTask,
   EcsEc2LaunchTarget,
-  CallAwsService,
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
@@ -257,40 +256,6 @@ export class StateMachineStack extends NestedStack {
       });
     };
 
-    // RDS Integration
-    const createUpdateStageInDb = (stage: StageType, status: Status) => {
-      const stageId = JsonPath.stringAt(`$.stageIds.${stageEnumToId[stage]}`);
-      const Sql = `UPDATE stages SET status = :status WHERE id = :stageId`;
-
-      return new CallAwsService(
-        this,
-        `Update RDS stage ${stage} to ${status}`,
-        {
-          service: 'rdsdata',
-          action: 'executeStatement',
-          parameters: {
-            ResourceArn: props.rdsInstance.instanceArn,
-            SecretArn: props.rdsInstance.secret?.secretArn,
-            Sql,
-            Parameters: [
-              {
-                Name: 'status',
-                Value: {
-                  StringValue: status,
-                },
-              },
-              {
-                Name: 'id',
-                Value: {
-                  StringValue: stageId,
-                },
-              },
-            ],
-          },
-          iamResources: ['*'],
-        }
-      );
-    };
     // Stage
     const createStage = (
       currentStage: StageType,
@@ -306,19 +271,9 @@ export class StateMachineStack extends NestedStack {
           StageOrder[stageIndex - 1],
           Status.SUCCESS
         );
-
-        updatePreviousStageInDb = createUpdateStageInDb(
-          StageOrder[stageIndex - 1],
-          Status.SUCCESS
-        );
       }
 
       const updateCurrentStageInState = createUpdateStageStatusTask(
-        currentStage,
-        Status.IN_PROGRESS
-      );
-
-      const updateCurrentStageInDb = createUpdateStageInDb(
         currentStage,
         Status.IN_PROGRESS
       );
@@ -334,12 +289,10 @@ export class StateMachineStack extends NestedStack {
         return updatePreviousStageInState
           .next(updateCurrentStageInState)
           .next(updatePreviousStageInDb)
-          .next(updateCurrentStageInDb)
           .next(ecsRunTask)
           .next(tasksOnSuccess(currentStage));
       } else {
         return updateCurrentStageInState
-          .next(updateCurrentStageInDb)
           .next(ecsRunTask)
           .next(tasksOnSuccess(currentStage));
       }
