@@ -21,13 +21,18 @@ import {
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
+import {} from 'aws-sdk/clients/rdsdataservice';
 
 import { config } from 'dotenv';
+import { DatabaseInstance } from 'aws-cdk-lib/aws-rds';
+import { IVpc } from 'aws-cdk-lib/aws-ec2';
 config();
 
 export interface StateMachineStackProps extends NestedStackProps {
   readonly topic: Topic;
   readonly ecsCluster: Cluster;
+  readonly rdsInstance: DatabaseInstance;
+  readonly vpc: IVpc;
   readonly prepareTaskDefinition: Ec2TaskDefinition;
   readonly codeQualityTaskDefinition: Ec2TaskDefinition;
   readonly unitTestTaskDefinition: Ec2TaskDefinition;
@@ -247,20 +252,20 @@ export class StateMachineStack extends NestedStack {
     const definition = start
       .next(createStageTransition(null, StageType.PREPARE))
       .next(prepareTask)
-      .next(tasksOnSuccess(StageType.PREPARE))
       .next(createStageTransition(StageType.PREPARE, StageType.CODE_QUALITY))
+      .next(tasksOnSuccess(StageType.PREPARE))
       .next(codeQualityTask)
-      .next(tasksOnSuccess(StageType.CODE_QUALITY))
       .next(createStageTransition(StageType.CODE_QUALITY, StageType.UNIT_TEST))
+      .next(tasksOnSuccess(StageType.CODE_QUALITY))
       .next(unitTestTask)
-      .next(tasksOnSuccess(StageType.UNIT_TEST))
       .next(createStageTransition(StageType.UNIT_TEST, StageType.BUILD))
+      .next(tasksOnSuccess(StageType.UNIT_TEST))
       .next(buildTask)
-      .next(tasksOnSuccess(StageType.BUILD))
       .next(createStageTransition(StageType.BUILD, StageType.DEPLOY_PROD))
+      .next(tasksOnSuccess(StageType.BUILD))
       .next(deployTask)
-      .next(tasksOnSuccess(StageType.DEPLOY_PROD))
       .next(createStageTransition(StageType.DEPLOY_PROD, null))
+      .next(tasksOnSuccess(StageType.DEPLOY_PROD))
       .next(success);
 
     // Create a state machine that times out after 1 hour of runtime
