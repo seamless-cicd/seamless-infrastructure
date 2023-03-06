@@ -36,7 +36,7 @@
         "type": "BUILD",
         "status": "IDLE"
       },
-      "deployProd": {
+      "deployProduction": {
         "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
         "type": "DEPLOY_PROD",
         "status": "IDLE"
