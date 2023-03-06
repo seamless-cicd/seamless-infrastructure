@@ -46,6 +46,8 @@ export class SeamlessStack extends Stack {
       {
         topic: snsStack.topic,
         ecsCluster: ecsStack.cluster,
+        rdsInstance: rdsStack.rdsInstance,
+        vpc: vpcStack.vpc,
         sampleSuccessTaskDefinition: ecsStack.sampleSuccessTaskDefinition,
         sampleFailureTaskDefinition: ecsStack.sampleFailureTaskDefinition,
         prepareTaskDefinition: ecsStack.prepareTaskDefinition,
