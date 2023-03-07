@@ -24,6 +24,10 @@ An SNS topic for notifying our backend about pipeline status.
 
 A Postgres database hosted on RDS storing all pipeline data.
 
+### ElastiCache Redis Cluster
+
+A Redis node hosted on ElastiCache for storing logs.
+
 ### ECS Cluster on EC2
 
 An ECS cluster used for running pipeline tasks.
