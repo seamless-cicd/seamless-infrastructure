@@ -1,9 +1,9 @@
 {
-  "name": "seamless-prepare",
+  "name": "seamless-code-quality",
   "version": "1.0.0",
   "author": "Seamless CI/CD",
   "license": "ISC",
-  "description": "Seamless CI/CD Pipeline - Prepare Stage",
+  "description": "Seamless CI/CD Pipeline - Code Quality Stage",
   "type": "module",
   "engines": {
     "node": ">=14.16"

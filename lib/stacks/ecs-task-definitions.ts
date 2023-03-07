@@ -72,7 +72,7 @@ const create = (
   return { taskDefinition, container };
 };
 
-// Build stage
+// Build stage: Uses above template, plus an additional bind mount for Docker-in-Docker
 const createBuildTaskDefinition = (
   ecsStack: NestedStack,
   efsDnsName: string,
@@ -86,7 +86,7 @@ const createBuildTaskDefinition = (
     taskRole
   );
 
-  // Add bind mount host volume
+  // Add bind mount
   taskDefinition.addVolume({
     name: 'docker-socket',
     host: {
@@ -94,7 +94,6 @@ const createBuildTaskDefinition = (
     },
   });
 
-  // Add mount points to container
   const dockerSocketMountPoint: MountPoint = {
     sourceVolume: 'docker-socket',
     containerPath: '/var/run/docker.sock',
