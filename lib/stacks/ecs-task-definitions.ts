@@ -10,7 +10,6 @@ import {
   FireLensLogDriver,
   FirelensLogRouter,
   FirelensLogRouterType,
-  FirelensConfigFileType,
 } from 'aws-cdk-lib/aws-ecs';
 import {
   PolicyStatement,
@@ -79,11 +78,11 @@ const createLogDriver = (): FireLensLogDriver => {
         logSubscriberUrl.slice(0, 8) === 'https://'
           ? logSubscriberUrl.slice(8)
           : logSubscriberUrl,
-      Format: 'json_lines',
+      Format: 'json',
       Port: '443',
-      URI: '/logs',
       tls: 'on',
       'tls.verify': 'off',
+      header: `API_KEY ${process.env.LOG_API_KEY}`,
     },
   });
 };
