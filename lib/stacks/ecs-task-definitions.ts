@@ -90,13 +90,17 @@ const createLogDriver = (): FireLensLogDriver => {
 
 // Prepare stage
 const createPrepareTaskDefinition = (
-  ecsStack: NestedStack,
+  ecsTasksStack: NestedStack,
   efsDnsName: string
 ) => {
-  const prepareTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Prepare', {
-    family: 'seamless-taskdefinition-prepare',
-    networkMode: NetworkMode.BRIDGE,
-  });
+  const prepareTaskDefinition = new Ec2TaskDefinition(
+    ecsTasksStack,
+    'Prepare',
+    {
+      family: 'seamless-taskdefinition-prepare',
+      networkMode: NetworkMode.BRIDGE,
+    }
+  );
 
   // Add Docker volume
   const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
@@ -121,7 +125,7 @@ const createPrepareTaskDefinition = (
   // Add sidecar logging container
   const loggingContainer = createLoggingContainer(
     'SeamlessLoggerPrepare',
-    ecsStack,
+    ecsTasksStack,
     prepareTaskDefinition
   );
 
@@ -130,11 +134,11 @@ const createPrepareTaskDefinition = (
 
 // Code Quality stage
 const createCodeQualityTaskDefinition = (
-  ecsStack: NestedStack,
+  ecsTasksStack: NestedStack,
   efsDnsName: string
 ) => {
   const codeQualityTaskDefinition = new Ec2TaskDefinition(
-    ecsStack,
+    ecsTasksStack,
     'CodeQuality',
     {
       family: 'seamless-taskdefinition-codequality',
@@ -168,7 +172,7 @@ const createCodeQualityTaskDefinition = (
   // Add sidecar logging container
   const loggingContainer = createLoggingContainer(
     'SeamlessLoggerCodeQuality',
-    ecsStack,
+    ecsTasksStack,
     codeQualityTaskDefinition
   );
 
@@ -177,13 +181,17 @@ const createCodeQualityTaskDefinition = (
 
 // Unit Test stage
 const createUnitTestTaskDefinition = (
-  ecsStack: NestedStack,
+  ecsTasksStack: NestedStack,
   efsDnsName: string
 ) => {
-  const unitTestTaskDefinition = new Ec2TaskDefinition(ecsStack, 'UnitTest', {
-    family: 'seamless-taskdefinition-unittest',
-    networkMode: NetworkMode.BRIDGE,
-  });
+  const unitTestTaskDefinition = new Ec2TaskDefinition(
+    ecsTasksStack,
+    'UnitTest',
+    {
+      family: 'seamless-taskdefinition-unittest',
+      networkMode: NetworkMode.BRIDGE,
+    }
+  );
 
   // Add Docker volume
   const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
@@ -208,7 +216,7 @@ const createUnitTestTaskDefinition = (
   // Add sidecar logging container
   const loggingContainer = createLoggingContainer(
     'SeamlessLoggerUnitTest',
-    ecsStack,
+    ecsTasksStack,
     unitTestTaskDefinition
   );
 
@@ -217,7 +225,7 @@ const createUnitTestTaskDefinition = (
 
 // Build stage
 const createBuildTaskDefinition = (
-  ecsStack: NestedStack,
+  ecsTasksStack: NestedStack,
   efsDnsName: string
 ) => {
   // IAM policy statement for full access to ECR
@@ -231,10 +239,10 @@ const createBuildTaskDefinition = (
     ],
   });
 
-  const buildTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Build', {
+  const buildTaskDefinition = new Ec2TaskDefinition(ecsTasksStack, 'Build', {
     family: 'seamless-taskdefinition-build',
     networkMode: NetworkMode.BRIDGE,
-    taskRole: new Role(ecsStack, 'EcrFullAccessTaskRole', {
+    taskRole: new Role(ecsTasksStack, 'EcrFullAccessTaskRole', {
       assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
       inlinePolicies: {
         EcrFullAccess: ecrFullAccessPolicyDocument,
@@ -281,7 +289,7 @@ const createBuildTaskDefinition = (
   // Add sidecar logging container
   const loggingContainer = createLoggingContainer(
     'SeamlessLoggerBuild',
-    ecsStack,
+    ecsTasksStack,
     buildTaskDefinition
   );
 
@@ -289,9 +297,9 @@ const createBuildTaskDefinition = (
 };
 
 // Sample definitions for testing
-const createSuccessTaskDefinition = (ecsStack: NestedStack) => {
+const createSuccessTaskDefinition = (ecsTasksStack: NestedStack) => {
   const sampleSuccessTaskDefinition = new Ec2TaskDefinition(
-    ecsStack,
+    ecsTasksStack,
     'SampleSuccess',
     {
       family: 'seamless-sample-success-task-definition',
@@ -309,9 +317,9 @@ const createSuccessTaskDefinition = (ecsStack: NestedStack) => {
   return sampleSuccessTaskDefinition;
 };
 
-const createFailureTaskDefinition = (ecsStack: NestedStack) => {
+const createFailureTaskDefinition = (ecsTasksStack: NestedStack) => {
   const sampleFailureTaskDefinition = new Ec2TaskDefinition(
-    ecsStack,
+    ecsTasksStack,
     'SampleFailure',
     {
       family: 'seamless-sample-failure-task-definition',

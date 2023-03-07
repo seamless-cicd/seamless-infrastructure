@@ -2,12 +2,13 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { VpcStack } from './stacks/vpc-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { SnsStack } from './stacks/sns-stack';
-import { EcsStack } from './stacks/ecs-stack';
+import { EcsStack } from './stacks/ecs-tasks-stack';
 import { StateMachineStack } from './stacks/state-machine-stack';
 import { RdsStack } from './stacks/rds-stack';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
+import { EcsBackendStack } from './stacks/ecs-backend-stack';
 config();
 
 export class SeamlessStack extends Stack {
@@ -27,17 +28,25 @@ export class SeamlessStack extends Stack {
     });
 
     // ECS
-    const ecsStack = new EcsStack(this, 'SeamlessEcs', {
+    const ecsTasksStack = new EcsStack(this, 'SeamlessEcs', {
       vpc: vpcStack.vpc,
       efs: efsStack.efs,
     });
 
-    ecsStack.addDependency(vpcStack);
+    ecsTasksStack.addDependency(vpcStack);
 
     // RDS
     const rdsStack = new RdsStack(this, 'SeamlessRds', {
       vpc: vpcStack.vpc,
     });
+
+    // Seamless backend stack
+    const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
+      vpc: vpcStack.vpc,
+      rdsInstance: rdsStack.rdsInstance,
+    });
+
+    ecsBackendStack.addDependency(rdsStack);
 
     // State machine
     const stateMachineStack = new StateMachineStack(
@@ -45,23 +54,25 @@ export class SeamlessStack extends Stack {
       'SeamlessStateMachine',
       {
         topic: snsStack.topic,
-        ecsCluster: ecsStack.cluster,
+        ecsCluster: ecsTasksStack.cluster,
         rdsInstance: rdsStack.rdsInstance,
         vpc: vpcStack.vpc,
-        sampleSuccessTaskDefinition: ecsStack.sampleSuccessTaskDefinition,
-        sampleFailureTaskDefinition: ecsStack.sampleFailureTaskDefinition,
-        prepareTaskDefinition: ecsStack.prepareTaskDefinition,
-        codeQualityTaskDefinition: ecsStack.codeQualityTaskDefinition,
-        unitTestTaskDefinition: ecsStack.unitTestTaskDefinition,
-        buildTaskDefinition: ecsStack.buildTaskDefinition,
-        integrationTestTaskDefinition: ecsStack.integrationTestTaskDefinition,
-        deployStagingTaskDefinition: ecsStack.deployStagingTaskDefinition,
-        deployProdTaskDefinition: ecsStack.deployProdTaskDefinition,
+        sampleSuccessTaskDefinition: ecsTasksStack.sampleSuccessTaskDefinition,
+        sampleFailureTaskDefinition: ecsTasksStack.sampleFailureTaskDefinition,
+        prepareTaskDefinition: ecsTasksStack.prepareTaskDefinition,
+        codeQualityTaskDefinition: ecsTasksStack.codeQualityTaskDefinition,
+        unitTestTaskDefinition: ecsTasksStack.unitTestTaskDefinition,
+        buildTaskDefinition: ecsTasksStack.buildTaskDefinition,
+        integrationTestTaskDefinition:
+          ecsTasksStack.integrationTestTaskDefinition,
+        deployStagingTaskDefinition: ecsTasksStack.deployStagingTaskDefinition,
+        deployProdTaskDefinition: ecsTasksStack.deployProdTaskDefinition,
       }
     );
 
     stateMachineStack.addDependency(snsStack);
-    stateMachineStack.addDependency(ecsStack);
+    stateMachineStack.addDependency(ecsTasksStack);
     stateMachineStack.addDependency(rdsStack);
+    stateMachineStack.addDependency(ecsBackendStack);
   }
 }
