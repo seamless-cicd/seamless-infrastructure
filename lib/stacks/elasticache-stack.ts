@@ -28,7 +28,6 @@ export class ElastiCacheStack extends NestedStack {
         subnetIds: props.vpc.publicSubnets.map((subnet) => subnet.subnetId),
       }
     );
-    console.log(this.elastiCacheSubnetGroup);
 
     // Create a new security group for the ElastiCache instance
     // Allow all inbound traffic from subnet group, and all outbound from cluster
@@ -40,7 +39,6 @@ export class ElastiCacheStack extends NestedStack {
         groupDescription: 'Security group for Seamless ElastiCache cluster',
       }
     );
-    console.log(this.elastiCacheSecurityGroup);
 
     // ElastiCache instance
     this.elastiCacheCluster = new CfnCacheCluster(
@@ -55,7 +53,6 @@ export class ElastiCacheStack extends NestedStack {
         vpcSecurityGroupIds: [this.elastiCacheSecurityGroup.ref],
       }
     );
-    console.log(this.elastiCacheCluster);
 
     // Output the endpoint URL for the ElastiCache instance
     new CfnOutput(this, 'ElastiCacheEndpoint', {
