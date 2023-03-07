@@ -7,18 +7,8 @@ import {
   DockerVolumeConfiguration,
   MountPoint,
   AwsLogDriver,
-  FireLensLogDriver,
-  FirelensLogRouter,
-  FirelensLogRouterType,
 } from 'aws-cdk-lib/aws-ecs';
-import {
-  PolicyStatement,
-  PolicyDocument,
-  Role,
-  ServicePrincipal,
-  Effect,
-} from 'aws-cdk-lib/aws-iam';
-import { Construct } from 'constructs';
+import { Role } from 'aws-cdk-lib/aws-iam';
 
 import { config } from 'dotenv';
 config();
@@ -47,224 +37,61 @@ const createDockerVolumeConfig = (
   };
 };
 
-// Configure logging container
-const createLoggingContainer = (
-  containerName: string,
-  scope: Construct,
-  taskDefinition: Ec2TaskDefinition
-): FirelensLogRouter => {
-  return new FirelensLogRouter(scope, containerName, {
-    image: ContainerImage.fromRegistry(
-      'public.ecr.aws/aws-observability/aws-for-fluent-bit:latest'
-    ),
-    firelensConfig: {
-      type: FirelensLogRouterType.FLUENTBIT,
-      options: {
-        enableECSLogMetadata: true,
-      },
-    },
-    memoryLimitMiB: 256,
-    taskDefinition,
-  });
-};
-
-const createLogDriver = (): FireLensLogDriver => {
-  const logSubscriberUrl = process.env.LOG_SUBSCRIBER_URL || '';
-
-  return new FireLensLogDriver({
-    options: {
-      Name: 'Http',
-      Host:
-        logSubscriberUrl.slice(0, 8) === 'https://'
-          ? logSubscriberUrl.slice(8)
-          : logSubscriberUrl,
-      Format: 'json',
-      Port: '443',
-      tls: 'on',
-      'tls.verify': 'off',
-      header: `API_KEY ${process.env.LOG_API_KEY}`,
-    },
-  });
-};
-
-// Prepare stage
-const createPrepareTaskDefinition = (
+// Task definition template
+const create = (
   ecsStack: NestedStack,
-  efsDnsName: string
+  stageName: string,
+  taskDefinitionId: string,
+  efsDnsName: string,
+  taskRole: Role
 ) => {
-  const prepareTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Prepare', {
-    family: 'seamless-taskdefinition-prepare',
+  const taskDefinition = new Ec2TaskDefinition(ecsStack, taskDefinitionId, {
+    family: `seamless-taskdefinition-${stageName}`,
     networkMode: NetworkMode.BRIDGE,
+    taskRole,
   });
 
-  // Add Docker volume
-  const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
-
-  prepareTaskDefinition.addVolume({
+  // Add shared Docker volume
+  taskDefinition.addVolume({
     name: 'seamless-efs-docker-volume',
-    dockerVolumeConfiguration,
+    dockerVolumeConfiguration: createDockerVolumeConfig(efsDnsName),
   });
 
   // Add application container
-  const logDriver = createLogDriver();
-
-  const prepareContainer = prepareTaskDefinition.addContainer('prepare', {
-    image: ContainerImage.fromAsset('./lib/assets/prepare'),
+  const container = taskDefinition.addContainer(stageName, {
+    image: ContainerImage.fromAsset(`./lib/assets/${stageName}`),
     cpu: 256,
     memoryLimitMiB: 512,
-    logging: logDriver,
+    logging: new AwsLogDriver({
+      streamPrefix: `seamless-logs-${stageName}`,
+    }),
   });
 
-  prepareContainer.addMountPoints(createDockerVolumeMountPoint());
+  container.addMountPoints(createDockerVolumeMountPoint());
 
-  // Add sidecar logging container
-  const loggingContainer = createLoggingContainer(
-    'SeamlessLoggerPrepare',
-    ecsStack,
-    prepareTaskDefinition
-  );
-
-  return prepareTaskDefinition;
-};
-
-// Code Quality stage
-const createCodeQualityTaskDefinition = (
-  ecsStack: NestedStack,
-  efsDnsName: string
-) => {
-  const codeQualityTaskDefinition = new Ec2TaskDefinition(
-    ecsStack,
-    'CodeQuality',
-    {
-      family: 'seamless-taskdefinition-codequality',
-      networkMode: NetworkMode.BRIDGE,
-    }
-  );
-
-  // Add Docker volume
-  const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
-
-  codeQualityTaskDefinition.addVolume({
-    name: 'seamless-efs-docker-volume',
-    dockerVolumeConfiguration,
-  });
-
-  // Add application container
-  const logDriver = createLogDriver();
-
-  const codeQualityContainer = codeQualityTaskDefinition.addContainer(
-    'codeQuality',
-    {
-      image: ContainerImage.fromAsset('./lib/assets/code_quality'),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: logDriver,
-    }
-  );
-
-  codeQualityContainer.addMountPoints(createDockerVolumeMountPoint());
-
-  // Add sidecar logging container
-  const loggingContainer = createLoggingContainer(
-    'SeamlessLoggerCodeQuality',
-    ecsStack,
-    codeQualityTaskDefinition
-  );
-
-  return codeQualityTaskDefinition;
-};
-
-// Unit Test stage
-const createUnitTestTaskDefinition = (
-  ecsStack: NestedStack,
-  efsDnsName: string
-) => {
-  const unitTestTaskDefinition = new Ec2TaskDefinition(ecsStack, 'UnitTest', {
-    family: 'seamless-taskdefinition-unittest',
-    networkMode: NetworkMode.BRIDGE,
-  });
-
-  // Add Docker volume
-  const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
-
-  unitTestTaskDefinition.addVolume({
-    name: 'seamless-efs-docker-volume',
-    dockerVolumeConfiguration,
-  });
-
-  // Add application container
-  const logDriver = createLogDriver();
-
-  const unitTestContainer = unitTestTaskDefinition.addContainer('unitTest', {
-    image: ContainerImage.fromAsset('./lib/assets/unit_test'),
-    cpu: 256,
-    memoryLimitMiB: 512,
-    logging: logDriver,
-  });
-
-  unitTestContainer.addMountPoints(createDockerVolumeMountPoint());
-
-  // Add sidecar logging container
-  const loggingContainer = createLoggingContainer(
-    'SeamlessLoggerUnitTest',
-    ecsStack,
-    unitTestTaskDefinition
-  );
-
-  return unitTestTaskDefinition;
+  return { taskDefinition, container };
 };
 
 // Build stage
 const createBuildTaskDefinition = (
   ecsStack: NestedStack,
-  efsDnsName: string
+  efsDnsName: string,
+  taskRole: Role
 ) => {
-  // IAM policy statement for full access to ECR
-  const ecrFullAccessPolicyDocument = new PolicyDocument({
-    statements: [
-      new PolicyStatement({
-        effect: Effect.ALLOW,
-        actions: ['ecr:*'],
-        resources: ['*'],
-      }),
-    ],
-  });
-
-  const buildTaskDefinition = new Ec2TaskDefinition(ecsStack, 'Build', {
-    family: 'seamless-taskdefinition-build',
-    networkMode: NetworkMode.BRIDGE,
-    taskRole: new Role(ecsStack, 'EcrFullAccessTaskRole', {
-      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
-      inlinePolicies: {
-        EcrFullAccess: ecrFullAccessPolicyDocument,
-      },
-    }),
-  });
-
-  // Add Docker volume
-  const dockerVolumeConfiguration = createDockerVolumeConfig(efsDnsName);
-
-  buildTaskDefinition.addVolume({
-    name: 'seamless-efs-docker-volume',
-    dockerVolumeConfiguration,
-  });
+  const { taskDefinition, container } = create(
+    ecsStack,
+    'build',
+    'Build',
+    efsDnsName,
+    taskRole
+  );
 
   // Add bind mount host volume
-  buildTaskDefinition.addVolume({
+  taskDefinition.addVolume({
     name: 'docker-socket',
     host: {
       sourcePath: '/var/run/docker.sock',
     },
-  });
-
-  // Add application container
-  const logDriver = createLogDriver();
-
-  const buildContainer = buildTaskDefinition.addContainer('build', {
-    image: ContainerImage.fromAsset('./lib/assets/build'),
-    cpu: 256,
-    memoryLimitMiB: 512,
-    logging: logDriver,
   });
 
   // Add mount points to container
@@ -274,65 +101,23 @@ const createBuildTaskDefinition = (
     readOnly: false,
   };
 
-  buildContainer.addMountPoints(createDockerVolumeMountPoint());
-  buildContainer.addMountPoints(dockerSocketMountPoint);
+  container.addMountPoints(dockerSocketMountPoint);
 
-  // Add sidecar logging container
-  const loggingContainer = createLoggingContainer(
-    'SeamlessLoggerBuild',
-    ecsStack,
-    buildTaskDefinition
-  );
-
-  return buildTaskDefinition;
+  return taskDefinition;
 };
 
-// Sample definitions for testing
-const createSuccessTaskDefinition = (ecsStack: NestedStack) => {
-  const sampleSuccessTaskDefinition = new Ec2TaskDefinition(
-    ecsStack,
-    'SampleSuccess',
-    {
-      family: 'seamless-sample-success-task-definition',
-      networkMode: NetworkMode.BRIDGE,
-    }
-  );
-
-  sampleSuccessTaskDefinition.addContainer('sample-success', {
-    image: ContainerImage.fromAsset('./lib/assets/sample_success'),
-    cpu: 256,
-    memoryLimitMiB: 512,
-    logging: new AwsLogDriver({ streamPrefix: 'sample-success' }),
-  });
-
-  return sampleSuccessTaskDefinition;
-};
-
-const createFailureTaskDefinition = (ecsStack: NestedStack) => {
-  const sampleFailureTaskDefinition = new Ec2TaskDefinition(
-    ecsStack,
-    'SampleFailure',
-    {
-      family: 'seamless-sample-failure-task-definition',
-      networkMode: NetworkMode.BRIDGE,
-    }
-  );
-
-  sampleFailureTaskDefinition.addContainer('sample-failure', {
-    image: ContainerImage.fromAsset('./lib/assets/sample_failure'),
-    cpu: 256,
-    memoryLimitMiB: 512,
-    logging: new AwsLogDriver({ streamPrefix: 'sample-failure' }),
-  });
-
-  return sampleFailureTaskDefinition;
-};
+// Deploy to Prod stage
+// const createDeployProdTaskDefinition = (
+//   ecsStack: NestedStack,
+//   efsDnsName: string,
+//   taskRole: Role
+// ) => {
+//   return create(ecsStack, 'deploy-prod', 'DeployProd', efsDnsName, taskRole)
+//     .taskDefinition;
+// };
 
 export default {
-  createPrepareTaskDefinition,
-  createCodeQualityTaskDefinition,
-  createUnitTestTaskDefinition,
+  create,
   createBuildTaskDefinition,
-  createSuccessTaskDefinition,
-  createFailureTaskDefinition,
+  // createDeployProdTaskDefinition,
 };

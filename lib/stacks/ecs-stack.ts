@@ -13,7 +13,13 @@ import {
   Ec2TaskDefinition,
 } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem } from 'aws-cdk-lib/aws-efs';
-import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import {
+  Role,
+  ServicePrincipal,
+  PolicyDocument,
+  PolicyStatement,
+  Effect,
+} from 'aws-cdk-lib/aws-iam';
 import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import { Construct } from 'constructs';
 
@@ -77,32 +83,77 @@ export class EcsStack extends NestedStack {
 
     this.cluster.addAsgCapacityProvider(capacityProvider);
 
-    // Task definitions
+    // Permissions
+    const taskDefinitionPolicyDocument = new PolicyDocument({
+      statements: [
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: [
+            'ecr:*',
+            'ec2:*',
+            'ecs:*',
+            'efs:*',
+            'elasticloadbalancing:*',
+          ],
+          resources: ['*'],
+        }),
+      ],
+    });
+
+    const taskRole = new Role(this, 'EcsTaskRole', {
+      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
+      inlinePolicies: {
+        SeamlessEcsTaskPolicies: taskDefinitionPolicyDocument,
+      },
+    });
+
     const efsDnsName = `${props.efs.fileSystemId}.efs.${this.region}.amazonaws.com`;
 
     // Sample task definitions
-    this.sampleSuccessTaskDefinition =
-      taskDefinitions.createSuccessTaskDefinition(this);
-    this.sampleFailureTaskDefinition =
-      taskDefinitions.createFailureTaskDefinition(this);
+    const createTaskDefinition = (
+      stageName: string,
+      taskDefinitionId: string
+    ) => {
+      return taskDefinitions.create(
+        this,
+        stageName,
+        taskDefinitionId,
+        efsDnsName,
+        taskRole
+      ).taskDefinition;
+    };
+
+    this.sampleSuccessTaskDefinition = createTaskDefinition(
+      'sample-success',
+      'SampleSuccess'
+    );
+
+    this.sampleFailureTaskDefinition = createTaskDefinition(
+      'sample-failure',
+      'SampleFailure'
+    );
 
     // Pipeline stage executor task definitions
-    this.prepareTaskDefinition = taskDefinitions.createPrepareTaskDefinition(
-      this,
-      efsDnsName
+    this.prepareTaskDefinition = createTaskDefinition('prepare', 'Prepare');
+
+    this.codeQualityTaskDefinition = createTaskDefinition(
+      'code-quality',
+      'CodeQuality'
     );
 
-    this.codeQualityTaskDefinition =
-      taskDefinitions.createCodeQualityTaskDefinition(this, efsDnsName);
-
-    this.unitTestTaskDefinition = taskDefinitions.createUnitTestTaskDefinition(
-      this,
-      efsDnsName
-    );
+    this.unitTestTaskDefinition = createTaskDefinition('unit-test', 'UnitTest');
 
     this.buildTaskDefinition = taskDefinitions.createBuildTaskDefinition(
       this,
-      efsDnsName
+      efsDnsName,
+      taskRole
     );
+
+    // this.deployProdTaskDefinition =
+    //   taskDefinitions.createDeployProdTaskDefinition(
+    //     this,
+    //     efsDnsName,
+    //     taskRole
+    //   );
   }
 }

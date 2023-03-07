@@ -239,6 +239,12 @@ export class StateMachineStack extends NestedStack {
                 name: 'AWS_ECR_REPO',
                 value: JsonPath.stringAt('$.containerVariables.awsEcrRepo'),
               },
+              {
+                name: 'LOG_SUBSCRIBER_URL',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.logSubscriberUrl'
+                ),
+              },
             ],
           },
         ],
