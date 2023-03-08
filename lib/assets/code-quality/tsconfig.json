@@ -1,0 +1,17 @@
+{
+  "compilerOptions": {
+    "target": "esnext",
+    "lib": ["esnext"],
+    "module": "esnext",
+    "rootDir": "./src",
+    "outDir": "./dist",
+    "moduleResolution": "node",
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+  },
+  "ts-node": {
+    "esm": true
+  },
+  "include": ["./src"],
+  "exclude": ["node_modules"]
+}

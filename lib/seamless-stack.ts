@@ -5,6 +5,7 @@ import { SnsStack } from './stacks/sns-stack';
 import { EcsStack } from './stacks/ecs-tasks-stack';
 import { StateMachineStack } from './stacks/state-machine-stack';
 import { RdsStack } from './stacks/rds-stack';
+import { ElastiCacheStack } from './stacks/elasticache-stack';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
@@ -20,6 +21,7 @@ export class SeamlessStack extends Stack {
 
     // EFS
     const efsStack = new EfsStack(this, 'SeamlessEfs', { vpc: vpcStack.vpc });
+
     efsStack.addDependency(vpcStack);
 
     // SNS
@@ -47,6 +49,12 @@ export class SeamlessStack extends Stack {
     });
 
     ecsBackendStack.addDependency(rdsStack);
+    // ElastiCache
+    const elastiCacheStack = new ElastiCacheStack(this, 'SeamlessElastiCache', {
+      vpc: vpcStack.vpc,
+    });
+
+    elastiCacheStack.addDependency(vpcStack);
 
     // State machine
     const stateMachineStack = new StateMachineStack(
