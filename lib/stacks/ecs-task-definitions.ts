@@ -39,17 +39,21 @@ const createDockerVolumeConfig = (
 
 // Task definition template
 const create = (
-  ecsStack: NestedStack,
+  ecsTasksStack: NestedStack,
   stageName: string,
   taskDefinitionId: string,
   efsDnsName: string,
   taskRole: Role
 ) => {
-  const taskDefinition = new Ec2TaskDefinition(ecsStack, taskDefinitionId, {
-    family: `seamless-taskdefinition-${stageName}`,
-    networkMode: NetworkMode.BRIDGE,
-    taskRole,
-  });
+  const taskDefinition = new Ec2TaskDefinition(
+    ecsTasksStack,
+    taskDefinitionId,
+    {
+      family: `seamless-taskdefinition-${stageName}`,
+      networkMode: NetworkMode.BRIDGE,
+      taskRole,
+    }
+  );
 
   // Add shared Docker volume
   taskDefinition.addVolume({
@@ -74,12 +78,12 @@ const create = (
 
 // Build stage: Uses above template, plus an additional bind mount for Docker-in-Docker
 const createBuildTaskDefinition = (
-  ecsStack: NestedStack,
+  ecsTasksStack: NestedStack,
   efsDnsName: string,
   taskRole: Role
 ) => {
   const { taskDefinition, container } = create(
-    ecsStack,
+    ecsTasksStack,
     'build',
     'Build',
     efsDnsName,
@@ -107,11 +111,11 @@ const createBuildTaskDefinition = (
 
 // Deploy to Prod stage
 // const createDeployProdTaskDefinition = (
-//   ecsStack: NestedStack,
+//   ecsTasksStack: NestedStack,
 //   efsDnsName: string,
 //   taskRole: Role
 // ) => {
-//   return create(ecsStack, 'deploy-prod', 'DeployProd', efsDnsName, taskRole)
+//   return create(ecsTasksStack, 'deploy-prod', 'DeployProd', efsDnsName, taskRole)
 //     .taskDefinition;
 // };
 
