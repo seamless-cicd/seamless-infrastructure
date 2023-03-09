@@ -43,12 +43,13 @@ export class SeamlessStack extends Stack {
     });
 
     // Seamless backend stack
-    const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
-      vpc: vpcStack.vpc,
-      rdsInstance: rdsStack.rdsInstance,
-    });
+    // const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
+    //   vpc: vpcStack.vpc,
+    //   rdsInstance: rdsStack.rdsInstance,
+    // });
 
-    ecsBackendStack.addDependency(rdsStack);
+    // ecsBackendStack.addDependency(rdsStack);
+
     // ElastiCache
     const elastiCacheStack = new ElastiCacheStack(this, 'SeamlessElastiCache', {
       vpc: vpcStack.vpc,
@@ -81,6 +82,6 @@ export class SeamlessStack extends Stack {
     stateMachineStack.addDependency(snsStack);
     stateMachineStack.addDependency(ecsTasksStack);
     stateMachineStack.addDependency(rdsStack);
-    stateMachineStack.addDependency(ecsBackendStack);
+    // stateMachineStack.addDependency(ecsBackendStack);
   }
 }

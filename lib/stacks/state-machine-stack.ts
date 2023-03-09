@@ -9,6 +9,8 @@ import {
   JsonPath,
   Chain,
   Result,
+  Choice,
+  Condition,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import {
@@ -87,15 +89,6 @@ interface StageData {
   status: Status;
 }
 
-interface RunData {
-  status: Status;
-  commitHash: string;
-  commitMessage: string;
-  committer: string;
-  triggerType: TriggerType;
-  stages: StageData[];
-}
-
 // TODO: Update Stage Order as state machine expands
 const StageOrder = [
   StageType.PREPARE,
@@ -148,25 +141,63 @@ export class StateMachineStack extends NestedStack {
 
     // Define actions to run on a stage success
     const tasksOnSuccess = (stage: StageType) => {
-      const notifySuccess = createNotificationState(`Notify ${stage} Success`, {
-        stageStatus: Status.SUCCESS,
-        runData: JsonPath.objectAt(`$.runData`),
-      });
+      // Send SNS notification
+      const notifySuccess = createNotificationState(
+        `Notify: ${stage} succeeded`,
+        {
+          stageStatus: Status.SUCCESS,
+          runStatus: JsonPath.objectAt(`$.runStatus`),
+        }
+      );
 
-      return notifySuccess;
+      // Mark own state as complete
+      const updateCurrentStageInState = createUpdateStageStatusTask(
+        stage,
+        Status.SUCCESS
+      );
+
+      // Update database
+      const updateCurrentStageInDb = createUpdateStageStatusInDbTask(
+        stage,
+        Status.SUCCESS
+      );
+
+      return notifySuccess
+        .next(updateCurrentStageInState)
+        .next(updateCurrentStageInDb);
     };
+
+    // Define actions to run on a pipeline failure
+    const tasksOnPipelineFailure = createNotificationState(
+      `Notify: Pipeline failed`,
+      {
+        stageStatus: Status.FAILURE,
+        runStatus: JsonPath.objectAt(`$.runStatus`),
+      }
+    ).next(new Fail(this, `Pipeline failed`));
 
     // Define actions to run on a stage failure
-    const tasksOnFailure = () => {
-      const notifyFailure = createNotificationState(`Notify Pipeline Failure`, {
+    const tasksOnFailure = (stage: StageType) => {
+      const notifyFailure = createNotificationState(`Notify: ${stage} failed`, {
         stageStatus: Status.FAILURE,
-        runData: JsonPath.objectAt(`$.runData`),
+        runStatus: JsonPath.objectAt(`$.runStatus`),
       });
 
-      return notifyFailure.next(new Fail(this, `Failure`));
-    };
+      const updateCurrentStageInState = createUpdateStageStatusTask(
+        stage,
+        Status.FAILURE
+      );
 
-    const failureChain = tasksOnFailure();
+      const updateCurrentStageInDb = createUpdateStageStatusInDbTask(
+        stage,
+        Status.FAILURE
+      );
+
+      return notifyFailure
+        .next(updateCurrentStageInState)
+        .next(updateCurrentStageInDb)
+        .next(tasksOnPipelineFailure);
+    };
 
     // Create an ECS run task with a given task definition
     // Entire environment passed as input is injecteed into the task
@@ -256,10 +287,25 @@ export class StateMachineStack extends NestedStack {
     };
 
     const createUpdateStageStatusTask = (stage: StageType, status: Status) => {
-      return new Pass(this, `Update ${stage} to ${status}`, {
-        result: Result.fromString(status),
-        resultPath: `$.runData.stages.${stageEnumToId[stage]}.status`,
-      });
+      return new Pass(
+        this,
+        `Update state machine context: ${stage} is now ${status}`,
+        {
+          result: Result.fromString(status),
+          resultPath: `$.runStatus.stages.${stageEnumToId[stage]}.status`,
+        }
+      );
+    };
+
+    // Placeholder for updating database
+    const createUpdateStageStatusInDbTask = (
+      stage: StageType,
+      status: Status
+    ) => {
+      return new Pass(
+        this,
+        `Update status in backend: ${stage} is now ${status}`
+      );
     };
 
     // Stage
@@ -267,58 +313,92 @@ export class StateMachineStack extends NestedStack {
       currentStage: StageType,
       taskDefinition: Ec2TaskDefinition
     ) => {
-      const stageIndex = StageOrder.indexOf(currentStage);
-
-      let updatePreviousStageInState;
-      let updatePreviousStageInDb;
-
-      if (stageIndex > 0) {
-        updatePreviousStageInState = createUpdateStageStatusTask(
-          StageOrder[stageIndex - 1],
-          Status.SUCCESS
-        );
-      }
-
+      // Mark current Stage as in progress
       const updateCurrentStageInState = createUpdateStageStatusTask(
         currentStage,
         Status.IN_PROGRESS
       );
 
+      const updateCurrentStageInDb = createUpdateStageStatusInDbTask(
+        currentStage,
+        Status.IN_PROGRESS
+      );
+
+      // Spin up a container to perform work
       const ecsRunTask = createEcsRunTask(
         currentStage,
         taskDefinition
-      ).addCatch(failureChain, {
+      ).addCatch(tasksOnFailure(currentStage), {
         resultPath: '$.error',
       });
 
-      if (updatePreviousStageInState && updatePreviousStageInDb) {
-        return updatePreviousStageInState
-          .next(updateCurrentStageInState)
-          .next(updatePreviousStageInDb)
-          .next(ecsRunTask)
-          .next(tasksOnSuccess(currentStage));
-      } else {
-        return updateCurrentStageInState
-          .next(ecsRunTask)
-          .next(tasksOnSuccess(currentStage));
-      }
+      // Subsequences of Steps that run within the larger Chain defined below
+      return updateCurrentStageInState
+        .next(updateCurrentStageInDb)
+        .next(ecsRunTask)
+        .next(tasksOnSuccess(currentStage));
     };
 
-    const success = new Succeed(this, 'Success');
+    // Success of entire pipeline
+    const success = createNotificationState('Notify: Pipeline succeeded', {
+      stageStatus: Status.SUCCESS,
+      runStatus: JsonPath.objectAt(`$.runStatus`),
+    }).next(new Succeed(this, 'Pipeline succeeded'));
+
+    // If using a Staging environment, wait for approvel before deploying to Prod
+    const createStagingChain = () => {
+      const stagingStage = createStage(
+        StageType.DEPLOY_STAGING,
+        props.sampleSuccessTaskDefinition
+      );
+
+      // Placeholder; replace with Lambda
+      const waitForManualApproval = new Pass(
+        this,
+        'Wait for manual approval of Staging environment'
+      );
+
+      const shouldAutoDeployToProd = new Choice(this, 'Auto deploy to Prod?')
+        .when(Condition.stringEquals('$.autoDeploy', 'true'), prodChain)
+        .otherwise(waitForManualApproval.next(prodChain));
+
+      return stagingStage.next(shouldAutoDeployToProd);
+    };
+
+    const prodChain = createStage(
+      StageType.DEPLOY_PROD,
+      props.sampleSuccessTaskDefinition
+    ).next(success);
+
+    const shouldUseStaging = new Choice(
+      this,
+      'Are we use a Staging environment?'
+    )
+      .when(
+        Condition.stringEquals('$.useStaging', 'true'),
+        createStagingChain()
+      )
+      .otherwise(prodChain);
+
+    // Choice: Run full pipeline if merging or pushing to main
+    const shouldRunFullPipeline = new Choice(this, 'Run full pipeline?')
+      .when(Condition.stringEquals('$.runFull', 'true'), shouldUseStaging)
+      .otherwise(success);
 
     // Define the machine
     const definition = Chain.start(
-      createStage(StageType.PREPARE, props.prepareTaskDefinition)
+      createNotificationState('Notify: Pipeline started', {
+        stageStatus: Status.IN_PROGRESS,
+        runStatus: JsonPath.objectAt(`$.runStatus`),
+      })
     )
+      .next(createStage(StageType.PREPARE, props.prepareTaskDefinition))
       .next(
         createStage(StageType.CODE_QUALITY, props.codeQualityTaskDefinition)
       )
       .next(createStage(StageType.UNIT_TEST, props.unitTestTaskDefinition))
       .next(createStage(StageType.BUILD, props.buildTaskDefinition))
-      .next(
-        createStage(StageType.DEPLOY_PROD, props.sampleSuccessTaskDefinition)
-      )
-      .next(success);
+      .next(shouldRunFullPipeline);
 
     // Create a state machine that times out after 1 hour of runtime
     new StateMachine(this, 'SeamlessStateMachine', {
