@@ -95,6 +95,7 @@ const StageOrder = [
   StageType.CODE_QUALITY,
   StageType.UNIT_TEST,
   StageType.BUILD,
+  StageType.DEPLOY_STAGING,
   StageType.DEPLOY_PROD,
 ];
 
@@ -259,6 +260,18 @@ export class StateMachineStack extends NestedStack {
                 value: JsonPath.stringAt('$.containerVariables.dockerfilePath'),
               },
               {
+                name: 'AWS_ECS_CLUSTER_STAGING',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.awsEcsClusterStaging'
+                ),
+              },
+              {
+                name: 'AWS_ECS_SERVICE_STAGING',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.awsEcsServiceStaging'
+                ),
+              },
+              {
                 name: 'AWS_ECS_CLUSTER',
                 value: JsonPath.stringAt('$.containerVariables.awsEcsCluster'),
               },
@@ -341,11 +354,22 @@ export class StateMachineStack extends NestedStack {
     const success = createNotificationState('Notify: Pipeline succeeded', {
       stageStatus: Status.SUCCESS,
       runStatus: JsonPath.objectAt(`$.runStatus`),
-    }).next(new Succeed(this, 'Pipeline succeeded'));
+    })
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run is now ${Status.SUCCESS}`,
+          {
+            result: Result.fromString(Status.SUCCESS),
+            resultPath: `$.runStatus.run.status`,
+          }
+        )
+      )
+      .next(new Succeed(this, 'Pipeline succeeded'));
 
     const prodChain = createStage(
       StageType.DEPLOY_PROD,
-      props.sampleSuccessTaskDefinition
+      props.deployProdTaskDefinition
     ).next(success);
 
     // Placeholder; replace with Lambda
@@ -360,7 +384,7 @@ export class StateMachineStack extends NestedStack {
 
     const stagingChain = createStage(
       StageType.DEPLOY_STAGING,
-      props.sampleSuccessTaskDefinition
+      props.deployStagingTaskDefinition
     ).next(autoDeployChoice);
 
     const stagingChoice = new Choice(this, 'Use a Staging environment?')
@@ -380,6 +404,16 @@ export class StateMachineStack extends NestedStack {
       stageStatus: Status.IN_PROGRESS,
       runStatus: JsonPath.objectAt(`$.runStatus`),
     })
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run is now ${Status.IN_PROGRESS}`,
+          {
+            result: Result.fromString(Status.IN_PROGRESS),
+            resultPath: `$.runStatus.run.status`,
+          }
+        )
+      )
       .next(createStage(StageType.PREPARE, props.prepareTaskDefinition))
       .next(
         createStage(StageType.CODE_QUALITY, props.codeQualityTaskDefinition)

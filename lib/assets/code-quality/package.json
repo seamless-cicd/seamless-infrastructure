@@ -10,7 +10,7 @@
   },
   "scripts": {
     "build": "tsc",
-    "lint": "eslint **/*.ts"
+    "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
     "dotenv": "^16.0.3",
