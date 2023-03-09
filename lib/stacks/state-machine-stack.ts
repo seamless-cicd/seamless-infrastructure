@@ -308,7 +308,7 @@ export class StateMachineStack extends NestedStack {
       );
     };
 
-    // Stage
+    // Helper that creates Step Function Steps which spin up ECS containers
     const createStage = (
       currentStage: StageType,
       taskDefinition: Ec2TaskDefinition
@@ -324,7 +324,6 @@ export class StateMachineStack extends NestedStack {
         Status.IN_PROGRESS
       );
 
-      // Spin up a container to perform work
       const ecsRunTask = createEcsRunTask(
         currentStage,
         taskDefinition
@@ -332,73 +331,61 @@ export class StateMachineStack extends NestedStack {
         resultPath: '$.error',
       });
 
-      // Subsequences of Steps that run within the larger Chain defined below
       return updateCurrentStageInState
         .next(updateCurrentStageInDb)
         .next(ecsRunTask)
         .next(tasksOnSuccess(currentStage));
     };
 
-    // Success of entire pipeline
+    // Success: Final state of entire pipeline
     const success = createNotificationState('Notify: Pipeline succeeded', {
       stageStatus: Status.SUCCESS,
       runStatus: JsonPath.objectAt(`$.runStatus`),
     }).next(new Succeed(this, 'Pipeline succeeded'));
-
-    // If using a Staging environment, wait for approvel before deploying to Prod
-    const createStagingChain = () => {
-      const stagingStage = createStage(
-        StageType.DEPLOY_STAGING,
-        props.sampleSuccessTaskDefinition
-      );
-
-      // Placeholder; replace with Lambda
-      const waitForManualApproval = new Pass(
-        this,
-        'Wait for manual approval of Staging environment'
-      );
-
-      const shouldAutoDeployToProd = new Choice(this, 'Auto deploy to Prod?')
-        .when(Condition.stringEquals('$.autoDeploy', 'true'), prodChain)
-        .otherwise(waitForManualApproval.next(prodChain));
-
-      return stagingStage.next(shouldAutoDeployToProd);
-    };
 
     const prodChain = createStage(
       StageType.DEPLOY_PROD,
       props.sampleSuccessTaskDefinition
     ).next(success);
 
-    const shouldUseStaging = new Choice(
+    // Placeholder; replace with Lambda
+    const waitForManualApproval = new Pass(
       this,
-      'Are we use a Staging environment?'
-    )
-      .when(
-        Condition.stringEquals('$.useStaging', 'true'),
-        createStagingChain()
-      )
-      .otherwise(prodChain);
+      'Wait for manual approval of Staging environment'
+    ).next(prodChain);
 
-    // Choice: Run full pipeline if merging or pushing to main
-    const shouldRunFullPipeline = new Choice(this, 'Run full pipeline?')
-      .when(Condition.stringEquals('$.runFull', 'true'), shouldUseStaging)
+    const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
+      .when(Condition.stringEquals('$.autoDeploy', 'true'), prodChain)
+      .otherwise(waitForManualApproval);
+
+    const stagingChain = createStage(
+      StageType.DEPLOY_STAGING,
+      props.sampleSuccessTaskDefinition
+    ).next(autoDeployChoice);
+
+    const stagingChoice = new Choice(this, 'Use a Staging environment?')
+      .when(Condition.stringEquals('$.useStaging', 'true'), stagingChain)
+      .otherwise(autoDeployChoice);
+
+    const buildChain = createStage(
+      StageType.BUILD,
+      props.buildTaskDefinition
+    ).next(stagingChoice);
+
+    const fullPipelineChoice = new Choice(this, 'Run full pipeline?')
+      .when(Condition.stringEquals('$.runFull', 'true'), buildChain)
       .otherwise(success);
 
-    // Define the machine
-    const definition = Chain.start(
-      createNotificationState('Notify: Pipeline started', {
-        stageStatus: Status.IN_PROGRESS,
-        runStatus: JsonPath.objectAt(`$.runStatus`),
-      })
-    )
+    const definition = createNotificationState('Notify: Pipeline started', {
+      stageStatus: Status.IN_PROGRESS,
+      runStatus: JsonPath.objectAt(`$.runStatus`),
+    })
       .next(createStage(StageType.PREPARE, props.prepareTaskDefinition))
       .next(
         createStage(StageType.CODE_QUALITY, props.codeQualityTaskDefinition)
       )
       .next(createStage(StageType.UNIT_TEST, props.unitTestTaskDefinition))
-      .next(createStage(StageType.BUILD, props.buildTaskDefinition))
-      .next(shouldRunFullPipeline);
+      .next(fullPipelineChoice);
 
     // Create a state machine that times out after 1 hour of runtime
     new StateMachine(this, 'SeamlessStateMachine', {
