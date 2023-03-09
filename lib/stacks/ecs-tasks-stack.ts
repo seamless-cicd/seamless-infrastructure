@@ -109,16 +109,17 @@ export class EcsStack extends NestedStack {
 
     const efsDnsName = `${props.efs.fileSystemId}.efs.${this.region}.amazonaws.com`;
 
-    // Sample task definitions
+    // Sample task definitions. Deploy stages don't need EFS.
     const createTaskDefinition = (
       stageName: string,
-      taskDefinitionId: string
+      taskDefinitionId: string,
+      useEfs = true
     ) => {
       return taskDefinitions.create(
         this,
         stageName,
         taskDefinitionId,
-        efsDnsName,
+        useEfs ? efsDnsName : '',
         taskRole
       ).taskDefinition;
     };
@@ -149,11 +150,10 @@ export class EcsStack extends NestedStack {
       taskRole
     );
 
-    // this.deployProdTaskDefinition =
-    //   taskDefinitions.createDeployProdTaskDefinition(
-    //     this,
-    //     efsDnsName,
-    //     taskRole
-    //   );
+    this.deployProdTaskDefinition = createTaskDefinition(
+      'deploy-prod',
+      'DeployProd',
+      false
+    );
   }
 }

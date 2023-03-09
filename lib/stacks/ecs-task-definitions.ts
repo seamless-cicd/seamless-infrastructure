@@ -55,12 +55,6 @@ const create = (
     }
   );
 
-  // Add shared Docker volume
-  taskDefinition.addVolume({
-    name: 'seamless-efs-docker-volume',
-    dockerVolumeConfiguration: createDockerVolumeConfig(efsDnsName),
-  });
-
   // Add application container
   const container = taskDefinition.addContainer(stageName, {
     image: ContainerImage.fromAsset(`./lib/assets/${stageName}`),
@@ -71,7 +65,15 @@ const create = (
     }),
   });
 
-  container.addMountPoints(createDockerVolumeMountPoint());
+  if (efsDnsName) {
+    // Add shared Docker volume
+    taskDefinition.addVolume({
+      name: 'seamless-efs-docker-volume',
+      dockerVolumeConfiguration: createDockerVolumeConfig(efsDnsName),
+    });
+
+    container.addMountPoints(createDockerVolumeMountPoint());
+  }
 
   return { taskDefinition, container };
 };
@@ -109,18 +111,7 @@ const createBuildTaskDefinition = (
   return taskDefinition;
 };
 
-// Deploy to Prod stage
-// const createDeployProdTaskDefinition = (
-//   ecsTasksStack: NestedStack,
-//   efsDnsName: string,
-//   taskRole: Role
-// ) => {
-//   return create(ecsTasksStack, 'deploy-prod', 'DeployProd', efsDnsName, taskRole)
-//     .taskDefinition;
-// };
-
 export default {
   create,
   createBuildTaskDefinition,
-  // createDeployProdTaskDefinition,
 };
