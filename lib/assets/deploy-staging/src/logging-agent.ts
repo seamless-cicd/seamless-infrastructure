@@ -10,7 +10,7 @@ const { STAGE_ID, LOG_SUBSCRIBER_URL } = process.env;
 export async function emitLog(
   logText: string,
   logToConsole = true,
-  logType = 'stdout',
+  logType = 'stdout'
 ) {
   // Assemble log
   const newUlid = ulid();

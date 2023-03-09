@@ -1,56 +1,64 @@
 {
-  "serviceId": "182801d8-ba2d-11ed-afa1-0242ac120002",
-  "runId": "182801d8-ba2d-11ed-afa1-0242ac120002",
+  "serviceId": "182801d8-sa2d-11ed-afa1-0242ac120002",
+  "runId": "182801d8-ra2d-11ed-afa1-0242ac120002",
   "stageIds": {
-    "prepare": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "codeQuality": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "unitTest": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "build": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "deployStaging": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "deployProduction": "182801d8-ba2d-11ed-afa1-0242ac120002"
+    "prepare": "182801d8-st2d-11ed-afa1-0242ac120001",
+    "codeQuality": "182801d8-st2d-11ed-afa1-0242ac120002",
+    "unitTest": "182801d8-st2d-11ed-afa1-0242ac120003",
+    "build": "182801d8-st2d-11ed-afa1-0242ac120004",
+    "deployStaging": "182801d8-st2d-11ed-afa1-0242ac120005",
+    "deployProduction": "182801d8-st2d-11ed-afa1-0242ac120006"
   },
   "runStatus": {
     "run": {
-      "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+      "id": "182801d8-ra2d-11ed-afa1-0242ac120002",
       "status": "IDLE"
     },
     "stages": {
       "prepare": {
-        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "id": "182801d8-st2d-11ed-afa1-0242ac120001",
         "status": "IDLE"
       },
       "codeQuality": {
-        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "id": "182801d8-st2d-11ed-afa1-0242ac120002",
         "status": "IDLE"
       },
       "unitTest": {
-        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "id": "182801d8-st2d-11ed-afa1-0242ac120003",
         "status": "IDLE"
       },
       "build": {
-        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "id": "182801d8-st2d-11ed-afa1-0242ac120004",
+        "status": "IDLE"
+      },
+      "deployStaging": {
+        "id": "182801d8-st2d-11ed-afa1-0242ac120005",
         "status": "IDLE"
       },
       "deployProduction": {
-        "id": "182801d8-ba2d-11ed-afa1-0242ac120002",
+        "id": "182801d8-st2d-11ed-afa1-0242ac120006",
         "status": "IDLE"
       }
     }
   },
   "runFull": "true",
+  "useStaging": "true",
   "autoDeploy": "false",
   "containerVariables": {
     "awsRegion": "us-east-1",
     "awsAccountId": "01234567912",
-    "awsAccessKey": "012345679",
-    "awsSecretAccessKey": "01234567912-ABCDEFG",
-    "githubPat": "182801d8-ba2d-11ed-afa1-0242ac120002",
-    "githubRepoUrl": "https://github.com/user-org/repo-name.git",
+    "awsAccessKey": "012345679ABC",
+    "awsSecretAccessKey": "012345679ABC",
+    "githubPat": "ghp_012345679abc",
+    "githubRepoUrl": "https://github.com/user-org/repo-name",
     "codeQualityCommand": "npm run lint",
     "unitTestCommand": "npm run test",
     "dockerfilePath": ".",
+    "awsEcsClusterStaging": "my-staging-ecs-cluster-name",
+    "awsEcsServiceStaging": "my-staging-ecs-service-name",
     "awsEcsCluster": "my-ecs-cluster-name",
     "awsEcsService": "my-ecs-service-name",
-    "awsEcrRepo": "my-ecr-repo-name"
+    "awsEcrRepo": "my-ecr-repo-name",
+    "logSubscriberUrl": "https://abc123.m.pipedream.net"
   }
 }

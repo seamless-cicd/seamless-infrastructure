@@ -21,12 +21,12 @@ async function createLoggedProcess(
 
   const { stdout, stderr } = childProcess;
 
-  stdout.on('data', (data: Buffer) => {
-    emitLog(data.toString());
+  stdout?.on('data', (data: Buffer) => {
+    emitLog(data.toString(), true, 'stdout');
   });
 
-  stderr.on('data', (data: Buffer) => {
-    emitLog(data.toString());
+  stderr?.on('data', (data: Buffer) => {
+    emitLog(data.toString(), true, 'stderr');
   });
 
   return childProcess;
