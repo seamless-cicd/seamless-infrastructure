@@ -354,7 +354,18 @@ export class StateMachineStack extends NestedStack {
     const success = createNotificationState('Notify: Pipeline succeeded', {
       stageStatus: Status.SUCCESS,
       runStatus: JsonPath.objectAt(`$.runStatus`),
-    }).next(new Succeed(this, 'Pipeline succeeded'));
+    })
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run is now ${Status.SUCCESS}`,
+          {
+            result: Result.fromString(Status.SUCCESS),
+            resultPath: `$.runStatus.run.status`,
+          }
+        )
+      )
+      .next(new Succeed(this, 'Pipeline succeeded'));
 
     const prodChain = createStage(
       StageType.DEPLOY_PROD,
@@ -393,6 +404,16 @@ export class StateMachineStack extends NestedStack {
       stageStatus: Status.IN_PROGRESS,
       runStatus: JsonPath.objectAt(`$.runStatus`),
     })
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run is now ${Status.IN_PROGRESS}`,
+          {
+            result: Result.fromString(Status.IN_PROGRESS),
+            resultPath: `$.runStatus.run.status`,
+          }
+        )
+      )
       .next(createStage(StageType.PREPARE, props.prepareTaskDefinition))
       .next(
         createStage(StageType.CODE_QUALITY, props.codeQualityTaskDefinition)
