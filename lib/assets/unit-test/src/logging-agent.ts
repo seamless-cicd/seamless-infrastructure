@@ -1,22 +1,35 @@
-import { ulid } from 'ulidx';
 import dotenv from 'dotenv';
 dotenv.config();
 
-import axios from 'axios';
+import { ulid, decodeTime } from 'ulidx';
+import fetch from 'node-fetch';
+
 const { STAGE_ID, LOG_SUBSCRIBER_URL } = process.env;
 
-// Sends a POST request with the log data, to the endpoint
-export async function emitLog(logText: string, logToConsole = true) {
+// Send a POST request with the log data, to the endpoint
+export async function emitLog(
+  logText: string,
+  logToConsole = true,
+  logType = 'stdout',
+) {
   // Assemble log
+  const newUlid = ulid();
+  const timeValue = decodeTime(newUlid);
   const logObj = {
-    id: ulid(),
+    id: newUlid,
     stageId: STAGE_ID,
     log: logText,
-    timestamp: new Date(),
+    timestamp: new Date(timeValue).toISOString(),
+    score: timeValue,
+    type: logType,
   };
 
   // Send log to remote log receiver
-  await axios.post(LOG_SUBSCRIBER_URL, logObj);
+  await fetch(LOG_SUBSCRIBER_URL, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(logObj),
+  });
 
   // Optionally log to console, for debugging
   if (logToConsole) {
