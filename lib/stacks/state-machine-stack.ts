@@ -169,13 +169,21 @@ export class StateMachineStack extends NestedStack {
     };
 
     // Define actions to run on a pipeline failure
-    const tasksOnPipelineFailure = createNotificationState(
-      `Notify: Pipeline failed`,
+    const tasksOnPipelineFailure = new Pass(
+      this,
+      `Update state machine context: Run is now ${Status.FAILURE}`,
       {
-        stageStatus: Status.FAILURE,
-        runStatus: JsonPath.objectAt(`$.runStatus`),
+        result: Result.fromString(Status.FAILURE),
+        resultPath: `$.runStatus.run.status`,
       }
-    ).next(new Fail(this, `Pipeline failed`));
+    )
+      .next(
+        createNotificationState(`Notify: Pipeline failed`, {
+          stageStatus: Status.FAILURE,
+          runStatus: JsonPath.objectAt(`$.runStatus`),
+        })
+      )
+      .next(new Fail(this, `Pipeline failed`));
 
     // Define actions to run on a stage failure
     const tasksOnFailure = (stage: StageType) => {
@@ -351,19 +359,19 @@ export class StateMachineStack extends NestedStack {
     };
 
     // Success: Final state of entire pipeline
-    const success = createNotificationState('Notify: Pipeline succeeded', {
-      stageStatus: Status.SUCCESS,
-      runStatus: JsonPath.objectAt(`$.runStatus`),
-    })
+    const success = new Pass(
+      this,
+      `Update state machine context: Run is now ${Status.SUCCESS}`,
+      {
+        result: Result.fromString(Status.SUCCESS),
+        resultPath: `$.runStatus.run.status`,
+      }
+    )
       .next(
-        new Pass(
-          this,
-          `Update state machine context: Run is now ${Status.SUCCESS}`,
-          {
-            result: Result.fromString(Status.SUCCESS),
-            resultPath: `$.runStatus.run.status`,
-          }
-        )
+        createNotificationState('Notify: Pipeline succeeded', {
+          stageStatus: Status.SUCCESS,
+          runStatus: JsonPath.objectAt(`$.runStatus`),
+        })
       )
       .next(new Succeed(this, 'Pipeline succeeded'));
 
@@ -389,7 +397,7 @@ export class StateMachineStack extends NestedStack {
 
     const stagingChoice = new Choice(this, 'Use a Staging environment?')
       .when(Condition.stringEquals('$.useStaging', 'true'), stagingChain)
-      .otherwise(autoDeployChoice);
+      .otherwise(prodChain);
 
     const buildChain = createStage(
       StageType.BUILD,
