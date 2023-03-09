@@ -17,6 +17,12 @@ export class VpcStack extends NestedStack {
           name: 'publicSubnet',
           subnetType: SubnetType.PUBLIC,
         },
+        // TODO: Activate private subnet
+        // {
+        //   cidrMask: 24,
+        //   name: 'privateSubnet',
+        //   subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+        // },
       ],
     });
   }

@@ -10,15 +10,16 @@ import { Construct } from 'constructs';
 import { config } from 'dotenv';
 config();
 
-export interface EcsStackProps extends NestedStackProps {
+export interface EcsBackendStackProps extends NestedStackProps {
   readonly vpc: IVpc;
   readonly rdsInstance: DatabaseInstance;
 }
 
 export class EcsBackendStack extends NestedStack {
   readonly cluster: Cluster;
+  readonly fargate: ApplicationLoadBalancedFargateService;
 
-  constructor(scope: Construct, id: string, props: EcsStackProps) {
+  constructor(scope: Construct, id: string, props: EcsBackendStackProps) {
     super(scope, id, props);
 
     // Prop validation
@@ -50,7 +51,7 @@ export class EcsBackendStack extends NestedStack {
       process.env.ECR_REPO
     );
 
-    new ApplicationLoadBalancedFargateService(
+    this.fargate = new ApplicationLoadBalancedFargateService(
       this,
       'BackendServiceALBFargateService',
       {
@@ -59,11 +60,12 @@ export class EcsBackendStack extends NestedStack {
         memoryLimitMiB: 1024,
         desiredCount: 1,
         publicLoadBalancer: true,
+        // TODO: Disable public IP, but allow outbound traffic for pulling image
+        // https://aws.amazon.com/premiumsupport/knowledge-center/ecs-fargate-pull-container-error/
         assignPublicIp: true,
-        loadBalancerName: 'BackendServiceALB',
-        taskSubnets: props.vpc.selectSubnets({
-          subnetType: SubnetType.PUBLIC,
-        }),
+        circuitBreaker: {
+          rollback: true,
+        },
         taskImageOptions: {
           image: backendServiceImage,
           containerPort: parseInt(process.env.CONTAINER_PORT),

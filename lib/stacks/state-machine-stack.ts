@@ -28,6 +28,7 @@ import {} from 'aws-sdk/clients/rdsdataservice';
 import { config } from 'dotenv';
 import { DatabaseInstance } from 'aws-cdk-lib/aws-rds';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 config();
 
 export interface StateMachineStackProps extends NestedStackProps {
@@ -57,12 +58,6 @@ enum StageType {
   OTHER = 'OTHER',
 }
 
-enum TriggerType {
-  MAIN = 'MAIN',
-  PR_OPEN = 'PR_OPEN',
-  PR_SYNC = 'PR_SYNC',
-}
-
 enum Status {
   SUCCESS = 'SUCCESS',
   FAILURE = 'FAILURE',
@@ -80,21 +75,6 @@ const stageEnumToId = {
   [StageType.DEPLOY_PROD]: 'deployProduction',
   [StageType.OTHER]: 'deployProduction',
 };
-
-interface StageData {
-  id: string;
-  type: StageType;
-  status: Status;
-}
-
-interface RunData {
-  status: Status;
-  commitHash: string;
-  commitMessage: string;
-  committer: string;
-  triggerType: TriggerType;
-  stages: StageData[];
-}
 
 // TODO: Update Stage Order as state machine expands
 const StageOrder = [
@@ -123,20 +103,6 @@ export class StateMachineStack extends NestedStack {
       throw new Error('No sample success definition provided');
     }
 
-    // Stage transitions
-    const createStageTransition = (
-      lastStage: StageType | null,
-      currentStage: StageType | null
-    ) => {
-      return new Pass(this, `Transition: ${lastStage} -> ${currentStage}`, {
-        result: TaskInput.fromObject({
-          lastStage,
-          currentStage,
-        }),
-        resultPath: '$.stages',
-      });
-    };
-
     // SNS notification tasks
     const createNotificationState = (id: string, message: object) => {
       return new SnsPublish(this, id, {
@@ -150,7 +116,7 @@ export class StateMachineStack extends NestedStack {
     const tasksOnSuccess = (stage: StageType) => {
       const notifySuccess = createNotificationState(`Notify ${stage} Success`, {
         stageStatus: Status.SUCCESS,
-        runData: JsonPath.objectAt(`$.runData`),
+        runStatus: JsonPath.objectAt(`$.runStatus`),
       });
 
       return notifySuccess;
@@ -160,7 +126,7 @@ export class StateMachineStack extends NestedStack {
     const tasksOnFailure = () => {
       const notifyFailure = createNotificationState(`Notify Pipeline Failure`, {
         stageStatus: Status.FAILURE,
-        runData: JsonPath.objectAt(`$.runData`),
+        runStatus: JsonPath.objectAt(`$.runStatus`),
       });
 
       return notifyFailure.next(new Fail(this, `Failure`));
@@ -258,7 +224,7 @@ export class StateMachineStack extends NestedStack {
     const createUpdateStageStatusTask = (stage: StageType, status: Status) => {
       return new Pass(this, `Update ${stage} to ${status}`, {
         result: Result.fromString(status),
-        resultPath: `$.runData.stages.${stageEnumToId[stage]}.status`,
+        resultPath: `$.runStatus.stages.${stageEnumToId[stage]}.status`,
       });
     };
 
