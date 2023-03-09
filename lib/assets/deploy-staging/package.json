@@ -1,9 +1,9 @@
 {
-  "name": "seamless-deploy-prod",
+  "name": "seamless-deploy-staging",
   "version": "1.0.0",
   "author": "Seamless CI/CD",
   "license": "ISC",
-  "description": "Seamless CI/CD Pipeline - Deploy Prod Stage",
+  "description": "Seamless CI/CD Pipeline - Deploy Staging Stage",
   "type": "module",
   "scripts": {
     "build": "tsc",

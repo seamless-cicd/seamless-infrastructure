@@ -95,6 +95,7 @@ const StageOrder = [
   StageType.CODE_QUALITY,
   StageType.UNIT_TEST,
   StageType.BUILD,
+  StageType.DEPLOY_STAGING,
   StageType.DEPLOY_PROD,
 ];
 
@@ -259,6 +260,18 @@ export class StateMachineStack extends NestedStack {
                 value: JsonPath.stringAt('$.containerVariables.dockerfilePath'),
               },
               {
+                name: 'AWS_ECS_CLUSTER_STAGING',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.awsEcsClusterStaging'
+                ),
+              },
+              {
+                name: 'AWS_ECS_SERVICE_STAGING',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.awsEcsServiceStaging'
+                ),
+              },
+              {
                 name: 'AWS_ECS_CLUSTER',
                 value: JsonPath.stringAt('$.containerVariables.awsEcsCluster'),
               },
@@ -345,7 +358,7 @@ export class StateMachineStack extends NestedStack {
 
     const prodChain = createStage(
       StageType.DEPLOY_PROD,
-      props.sampleSuccessTaskDefinition
+      props.deployProdTaskDefinition
     ).next(success);
 
     // Placeholder; replace with Lambda
@@ -360,7 +373,7 @@ export class StateMachineStack extends NestedStack {
 
     const stagingChain = createStage(
       StageType.DEPLOY_STAGING,
-      props.sampleSuccessTaskDefinition
+      props.deployStagingTaskDefinition
     ).next(autoDeployChoice);
 
     const stagingChoice = new Choice(this, 'Use a Staging environment?')

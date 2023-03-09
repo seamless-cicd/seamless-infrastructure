@@ -8,17 +8,17 @@ const {
   STAGE_ID,
   AWS_REGION,
   AWS_ACCOUNT_ID,
-  AWS_ECS_CLUSTER,
-  AWS_ECS_SERVICE,
+  AWS_ECS_CLUSTER_STAGING,
+  AWS_ECS_SERVICE_STAGING,
 } = process.env;
 
-async function deployProd(): Promise<void> {
-  await emitLog(`Deploy to Prod stage starting; stage ID: ${STAGE_ID}`);
+async function deployStaging(): Promise<void> {
+  await emitLog(`Deploy to Staging stage starting; stage ID: ${STAGE_ID}`);
 
   const ecs = new ECSClient({ region: AWS_REGION });
 
-  const serviceArn = `arn:aws:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:service/${AWS_ECS_SERVICE}`;
-  const clusterArn = `arn:aws:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:cluster/${AWS_ECS_CLUSTER}`;
+  const serviceArn = `arn:aws:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:service/${AWS_ECS_SERVICE_STAGING}`;
+  const clusterArn = `arn:aws:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:cluster/${AWS_ECS_CLUSTER_STAGING}`;
 
   try {
     // Restart the Fargate service without changing its Task Definition
@@ -49,4 +49,4 @@ async function deployProd(): Promise<void> {
   }
 }
 
-deployProd();
+deployStaging();

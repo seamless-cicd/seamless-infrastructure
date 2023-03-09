@@ -124,6 +124,7 @@ export class EcsStack extends NestedStack {
       ).taskDefinition;
     };
 
+    // Sample placeholders
     this.sampleSuccessTaskDefinition = createTaskDefinition(
       'sample-success',
       'SampleSuccess'
@@ -134,7 +135,7 @@ export class EcsStack extends NestedStack {
       'SampleFailure'
     );
 
-    // Pipeline stage executor task definitions
+    // Executor task definitions
     this.prepareTaskDefinition = createTaskDefinition('prepare', 'Prepare');
 
     this.codeQualityTaskDefinition = createTaskDefinition(
@@ -148,6 +149,12 @@ export class EcsStack extends NestedStack {
       this,
       efsDnsName,
       taskRole
+    );
+
+    this.deployStagingTaskDefinition = createTaskDefinition(
+      'deploy-staging',
+      'DeployStaging',
+      false
     );
 
     this.deployProdTaskDefinition = createTaskDefinition(
