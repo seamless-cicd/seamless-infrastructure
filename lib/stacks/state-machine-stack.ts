@@ -141,9 +141,8 @@ export class StateMachineStack extends NestedStack {
         Status.SUCCESS
       );
 
-      return notifySuccess
-        .next(updateCurrentStageInState)
-        .next(createUpdateDbStatusTask());
+      return notifySuccess.next(updateCurrentStageInState);
+      // .next(createUpdateDbStatusTask());
     };
 
     // Define actions to run on a pipeline failure
@@ -175,10 +174,12 @@ export class StateMachineStack extends NestedStack {
         Status.FAILURE
       );
 
-      return notifyFailure
-        .next(updateCurrentStageInState)
-        .next(createUpdateDbStatusTask())
-        .next(tasksOnPipelineFailure);
+      return (
+        notifyFailure
+          .next(updateCurrentStageInState)
+          // .next(createUpdateDbStatusTask())
+          .next(tasksOnPipelineFailure)
+      );
     };
 
     // Create an ECS run task with a given task definition
@@ -324,10 +325,12 @@ export class StateMachineStack extends NestedStack {
         resultPath: '$.error',
       });
 
-      return updateCurrentStageInState
-        .next(createUpdateDbStatusTask())
-        .next(ecsRunTask)
-        .next(tasksOnSuccess(currentStage));
+      return (
+        updateCurrentStageInState
+          // .next(createUpdateDbStatusTask())
+          .next(ecsRunTask)
+          .next(tasksOnSuccess(currentStage))
+      );
     };
 
     // Success: Final state of entire pipeline
@@ -359,7 +362,7 @@ export class StateMachineStack extends NestedStack {
     ).next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
-      .when(Condition.stringEquals('$.autoDeploy', 'true'), prodChain)
+      .when(Condition.booleanEquals('$.autoDeploy', true), prodChain)
       .otherwise(waitForManualApproval);
 
     const stagingChain = createStage(
@@ -368,7 +371,7 @@ export class StateMachineStack extends NestedStack {
     ).next(autoDeployChoice);
 
     const stagingChoice = new Choice(this, 'Use a Staging environment?')
-      .when(Condition.stringEquals('$.useStaging', 'true'), stagingChain)
+      .when(Condition.booleanEquals('$.useStaging', true), stagingChain)
       .otherwise(prodChain);
 
     const buildChain = createStage(
@@ -377,7 +380,7 @@ export class StateMachineStack extends NestedStack {
     ).next(stagingChoice);
 
     const fullPipelineChoice = new Choice(this, 'Run full pipeline?')
-      .when(Condition.stringEquals('$.runFull', 'true'), buildChain)
+      .when(Condition.booleanEquals('$.runFull', true), buildChain)
       .otherwise(success);
 
     const definition = createNotificationState('Notify: Pipeline started', {
