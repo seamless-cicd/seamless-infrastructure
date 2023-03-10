@@ -141,9 +141,8 @@ export class StateMachineStack extends NestedStack {
         Status.SUCCESS
       );
 
-      return notifySuccess
-        .next(updateCurrentStageInState)
-        .next(createUpdateDbStatusTask());
+      return notifySuccess.next(updateCurrentStageInState);
+      // .next(createUpdateDbStatusTask());
     };
 
     // Define actions to run on a pipeline failure
@@ -175,10 +174,12 @@ export class StateMachineStack extends NestedStack {
         Status.FAILURE
       );
 
-      return notifyFailure
-        .next(updateCurrentStageInState)
-        .next(createUpdateDbStatusTask())
-        .next(tasksOnPipelineFailure);
+      return (
+        notifyFailure
+          .next(updateCurrentStageInState)
+          // .next(createUpdateDbStatusTask())
+          .next(tasksOnPipelineFailure)
+      );
     };
 
     // Create an ECS run task with a given task definition
@@ -324,10 +325,12 @@ export class StateMachineStack extends NestedStack {
         resultPath: '$.error',
       });
 
-      return updateCurrentStageInState
-        .next(createUpdateDbStatusTask())
-        .next(ecsRunTask)
-        .next(tasksOnSuccess(currentStage));
+      return (
+        updateCurrentStageInState
+          // .next(createUpdateDbStatusTask())
+          .next(ecsRunTask)
+          .next(tasksOnSuccess(currentStage))
+      );
     };
 
     // Success: Final state of entire pipeline
