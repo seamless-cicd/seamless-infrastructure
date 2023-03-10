@@ -30,6 +30,7 @@ import {} from 'aws-sdk/clients/rdsdataservice';
 import { config } from 'dotenv';
 import { DatabaseInstance } from 'aws-cdk-lib/aws-rds';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 config();
 
 export interface StateMachineStackProps extends NestedStackProps {
@@ -57,12 +58,6 @@ enum StageType {
   DEPLOY_STAGING = 'DEPLOY_STAGING',
   DEPLOY_PROD = 'DEPLOY_PROD',
   OTHER = 'OTHER',
-}
-
-enum TriggerType {
-  MAIN = 'MAIN',
-  PR_OPEN = 'PR_OPEN',
-  PR_SYNC = 'PR_SYNC',
 }
 
 enum Status {
@@ -116,20 +111,6 @@ export class StateMachineStack extends NestedStack {
     if (!props?.sampleSuccessTaskDefinition) {
       throw new Error('No sample success definition provided');
     }
-
-    // Stage transitions
-    const createStageTransition = (
-      lastStage: StageType | null,
-      currentStage: StageType | null
-    ) => {
-      return new Pass(this, `Transition: ${lastStage} -> ${currentStage}`, {
-        result: TaskInput.fromObject({
-          lastStage,
-          currentStage,
-        }),
-        resultPath: '$.stages',
-      });
-    };
 
     // SNS notification tasks
     const createNotificationState = (id: string, message: object) => {

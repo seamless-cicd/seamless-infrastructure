@@ -5,6 +5,7 @@ import {
   InstanceClass,
   InstanceSize,
   UserData,
+  SubnetType,
 } from 'aws-cdk-lib/aws-ec2';
 import {
   Cluster,
@@ -25,12 +26,12 @@ import { Construct } from 'constructs';
 
 import taskDefinitions from './ecs-task-definitions';
 
-export interface EcsStackProps extends NestedStackProps {
+export interface EcsTasksStackProps extends NestedStackProps {
   readonly vpc: IVpc;
   readonly efs: FileSystem;
 }
 
-export class EcsStack extends NestedStack {
+export class EcsTasksStack extends NestedStack {
   readonly cluster: Cluster;
   readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
   readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
@@ -42,7 +43,7 @@ export class EcsStack extends NestedStack {
   readonly deployStagingTaskDefinition: Ec2TaskDefinition;
   readonly deployProdTaskDefinition: Ec2TaskDefinition;
 
-  constructor(scope: Construct, id: string, props?: EcsStackProps) {
+  constructor(scope: Construct, id: string, props?: EcsTasksStackProps) {
     super(scope, id, props);
 
     // Prop validation
@@ -53,8 +54,11 @@ export class EcsStack extends NestedStack {
     // Autoscaling group for ECS instances
     const autoScalingGroup = new AutoScalingGroup(this, 'AutoScalingGroup', {
       vpc: props.vpc,
-      // Use public IP addresses or VPC internal interface
+      // TODO: Switch to private subnet
       associatePublicIpAddress: true,
+      vpcSubnets: {
+        subnetType: SubnetType.PUBLIC,
+      },
       machineImage: EcsOptimizedImage.amazonLinux2(),
       instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
       userData: UserData.forLinux(),

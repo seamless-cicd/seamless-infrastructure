@@ -2,14 +2,15 @@ import { Stack, StackProps } from 'aws-cdk-lib';
 import { VpcStack } from './stacks/vpc-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { SnsStack } from './stacks/sns-stack';
-import { EcsStack } from './stacks/ecs-tasks-stack';
+import { EcsTasksStack } from './stacks/ecs-tasks-stack';
 import { StateMachineStack } from './stacks/state-machine-stack';
 import { RdsStack } from './stacks/rds-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
+import { EcsBackendStack } from './stacks/ecs-backend-stack';
+import { ApiGatewayStack } from './stacks/api-gateway-stack';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
-import { EcsBackendStack } from './stacks/ecs-backend-stack';
 config();
 
 export class SeamlessStack extends Stack {
@@ -30,7 +31,7 @@ export class SeamlessStack extends Stack {
     });
 
     // ECS
-    const ecsTasksStack = new EcsStack(this, 'SeamlessEcs', {
+    const ecsTasksStack = new EcsTasksStack(this, 'SeamlessEcs', {
       vpc: vpcStack.vpc,
       efs: efsStack.efs,
     });
@@ -43,12 +44,12 @@ export class SeamlessStack extends Stack {
     });
 
     // Seamless backend stack
-    // const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
-    //   vpc: vpcStack.vpc,
-    //   rdsInstance: rdsStack.rdsInstance,
-    // });
+    const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
+      vpc: vpcStack.vpc,
+      rdsInstance: rdsStack.rdsInstance,
+    });
 
-    // ecsBackendStack.addDependency(rdsStack);
+    ecsBackendStack.addDependency(rdsStack);
 
     // ElastiCache
     const elastiCacheStack = new ElastiCacheStack(this, 'SeamlessElastiCache', {
@@ -56,6 +57,11 @@ export class SeamlessStack extends Stack {
     });
 
     elastiCacheStack.addDependency(vpcStack);
+
+    const apiGateway = new ApiGatewayStack(this, 'SeamlessAPIGateway', {
+      vpc: vpcStack.vpc,
+      fargate: ecsBackendStack.fargate,
+    });
 
     // State machine
     const stateMachineStack = new StateMachineStack(
@@ -82,6 +88,7 @@ export class SeamlessStack extends Stack {
     stateMachineStack.addDependency(snsStack);
     stateMachineStack.addDependency(ecsTasksStack);
     stateMachineStack.addDependency(rdsStack);
-    // stateMachineStack.addDependency(ecsBackendStack);
+    stateMachineStack.addDependency(ecsBackendStack);
+    stateMachineStack.addDependency(apiGateway);
   }
 }
