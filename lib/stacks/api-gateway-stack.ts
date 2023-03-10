@@ -1,5 +1,10 @@
 import { CfnOutput, NestedStack, NestedStackProps } from 'aws-cdk-lib';
-import { CfnApi, CfnIntegration, CfnRoute } from 'aws-cdk-lib/aws-apigatewayv2';
+import {
+  CfnApi,
+  CfnIntegration,
+  CfnRoute,
+  CfnStage,
+} from 'aws-cdk-lib/aws-apigatewayv2';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Construct } from 'constructs';
@@ -40,6 +45,12 @@ export class ApiGatewayStack extends NestedStack {
         payloadFormatVersion: '1.0',
       }
     );
+
+    new CfnStage(this, 'SeamlessHttpApiStage', {
+      apiId: this.httpApi.attrApiId,
+      stageName: '$default',
+      autoDeploy: true,
+    });
 
     // Defines a route that accepts GET/POST to any route (/)
     new CfnRoute(this, 'SeamlessHttpRoute', {
