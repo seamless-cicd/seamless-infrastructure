@@ -1,4 +1,4 @@
-import { NestedStack, NestedStackProps, Duration } from 'aws-cdk-lib';
+import { NestedStack, NestedStackProps, Duration, Stack } from 'aws-cdk-lib';
 import {
   StateMachine,
   Pass,
@@ -22,15 +22,17 @@ import {
   SnsPublish,
   EcsRunTask,
   EcsEc2LaunchTarget,
+  CallApiGatewayHttpApiEndpoint,
+  HttpMethod,
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
-import {} from 'aws-sdk/clients/rdsdataservice';
 
 import { config } from 'dotenv';
 import { DatabaseInstance } from 'aws-cdk-lib/aws-rds';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
-import { Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
+import { CfnApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { randomUUID } from 'crypto';
 config();
 
 export interface StateMachineStackProps extends NestedStackProps {
@@ -47,6 +49,7 @@ export interface StateMachineStackProps extends NestedStackProps {
   readonly deployProdTaskDefinition: Ec2TaskDefinition;
   readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
   readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
+  readonly httpApi: CfnApi;
 }
 
 enum StageType {
@@ -138,15 +141,9 @@ export class StateMachineStack extends NestedStack {
         Status.SUCCESS
       );
 
-      // Update database
-      const updateCurrentStageInDb = createUpdateStageStatusInDbTask(
-        stage,
-        Status.SUCCESS
-      );
-
       return notifySuccess
         .next(updateCurrentStageInState)
-        .next(updateCurrentStageInDb);
+        .next(createUpdateDbStatusTask());
     };
 
     // Define actions to run on a pipeline failure
@@ -178,14 +175,9 @@ export class StateMachineStack extends NestedStack {
         Status.FAILURE
       );
 
-      const updateCurrentStageInDb = createUpdateStageStatusInDbTask(
-        stage,
-        Status.FAILURE
-      );
-
       return notifyFailure
         .next(updateCurrentStageInState)
-        .next(updateCurrentStageInDb)
+        .next(createUpdateDbStatusTask())
         .next(tasksOnPipelineFailure);
     };
 
@@ -299,14 +291,18 @@ export class StateMachineStack extends NestedStack {
       );
     };
 
-    // Placeholder for updating database
-    const createUpdateStageStatusInDbTask = (
-      stage: StageType,
-      status: Status
-    ) => {
-      return new Pass(
+    // TODO: Granularize database updates?
+    const createUpdateDbStatusTask = () => {
+      return new CallApiGatewayHttpApiEndpoint(
         this,
-        `Update status in backend: ${stage} is now ${status}`
+        `SeamlessCallHttpApiEndpoint-${randomUUID()}`,
+        {
+          apiId: props.httpApi.attrApiId,
+          apiStack: Stack.of(props.httpApi),
+          method: HttpMethod.POST,
+          requestBody: TaskInput.fromJsonPathAt('$.runStatus'),
+          apiPath: '/internal/status-updates',
+        }
       );
     };
 
@@ -321,11 +317,6 @@ export class StateMachineStack extends NestedStack {
         Status.IN_PROGRESS
       );
 
-      const updateCurrentStageInDb = createUpdateStageStatusInDbTask(
-        currentStage,
-        Status.IN_PROGRESS
-      );
-
       const ecsRunTask = createEcsRunTask(
         currentStage,
         taskDefinition
@@ -334,7 +325,7 @@ export class StateMachineStack extends NestedStack {
       });
 
       return updateCurrentStageInState
-        .next(updateCurrentStageInDb)
+        .next(createUpdateDbStatusTask())
         .next(ecsRunTask)
         .next(tasksOnSuccess(currentStage));
     };

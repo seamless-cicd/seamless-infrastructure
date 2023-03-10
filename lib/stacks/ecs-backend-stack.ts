@@ -41,6 +41,26 @@ export class EcsBackendStack extends NestedStack {
       );
     }
 
+    if (!process.env.REDIS_PORT) {
+      throw new Error('No redis port provided');
+    }
+
+    if (!process.env.REDIS_HOST) {
+      throw new Error('No redis host provided');
+    }
+
+    if (!process.env.GET_LAMBDA) {
+      throw new Error('No get lambda provided');
+    }
+
+    if (!process.env.SET_LAMBDA) {
+      throw new Error('No set lambda provided');
+    }
+
+    if (!process.env.API_KEY) {
+      throw new Error('No API key provided');
+    }
+
     this.cluster = new Cluster(this, 'BackendServiceCluster', {
       vpc: props.vpc,
       clusterName: 'backend-service-cluster',
@@ -51,6 +71,7 @@ export class EcsBackendStack extends NestedStack {
       process.env.ECR_REPO
     );
 
+    // TODO: Switch task image to use `fromAsset` for continued redeployment of backend
     this.fargate = new ApplicationLoadBalancedFargateService(
       this,
       'BackendServiceALBFargateService',
@@ -74,6 +95,11 @@ export class EcsBackendStack extends NestedStack {
             PORT: '3000',
             // TODO: Dynamically compute DATABASE_URL
             DATABASE_URL: process.env.DATABASE_URL,
+            REDIS_PORT: process.env.REDIS_PORT,
+            REDIS_HOST: process.env.REDIS_HOST,
+            GET_LAMBDA: process.env.GET_LAMBDA,
+            SET_LAMBDA: process.env.SET_LAMBDA,
+            API_KEY: process.env.API_KEY,
           },
         },
       }

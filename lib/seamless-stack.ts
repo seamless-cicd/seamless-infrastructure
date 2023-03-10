@@ -82,6 +82,7 @@ export class SeamlessStack extends Stack {
           ecsTasksStack.integrationTestTaskDefinition,
         deployStagingTaskDefinition: ecsTasksStack.deployStagingTaskDefinition,
         deployProdTaskDefinition: ecsTasksStack.deployProdTaskDefinition,
+        httpApi: apiGateway.httpApi,
       }
     );
 
