@@ -1,13 +1,13 @@
 {
   "serviceId": "182801d8-sa2d-11ed-afa1-0242ac120002",
-  "runId": "182801d8-ra2d-11ed-afa1-0242ac120002",
+  "runId": "runId",
   "stageIds": {
-    "prepare": "182801d8-st2d-11ed-afa1-0242ac120001",
-    "codeQuality": "182801d8-st2d-11ed-afa1-0242ac120002",
-    "unitTest": "182801d8-st2d-11ed-afa1-0242ac120003",
-    "build": "182801d8-st2d-11ed-afa1-0242ac120004",
-    "deployStaging": "182801d8-st2d-11ed-afa1-0242ac120005",
-    "deployProduction": "182801d8-st2d-11ed-afa1-0242ac120006"
+    "prepare": "prepareId",
+    "codeQuality": "codeQualityId",
+    "unitTest": "unitTestId",
+    "build": "buildId",
+    "deployStaging": "deployStagingId",
+    "deployProduction": "deployProdId"
   },
   "runStatus": {
     "run": {
@@ -16,27 +16,27 @@
     },
     "stages": {
       "prepare": {
-        "id": "182801d8-st2d-11ed-afa1-0242ac120001",
+        "id": "prepareId",
         "status": "IDLE"
       },
       "codeQuality": {
-        "id": "182801d8-st2d-11ed-afa1-0242ac120002",
+        "id": "codeQualityId",
         "status": "IDLE"
       },
       "unitTest": {
-        "id": "182801d8-st2d-11ed-afa1-0242ac120003",
+        "id": "unitTestId",
         "status": "IDLE"
       },
       "build": {
-        "id": "182801d8-st2d-11ed-afa1-0242ac120004",
+        "id": "buildId",
         "status": "IDLE"
       },
       "deployStaging": {
-        "id": "182801d8-st2d-11ed-afa1-0242ac120005",
+        "id": "deployStagingId",
         "status": "IDLE"
       },
       "deployProduction": {
-        "id": "182801d8-st2d-11ed-afa1-0242ac120006",
+        "id": "deployProdId",
         "status": "IDLE"
       }
     }
