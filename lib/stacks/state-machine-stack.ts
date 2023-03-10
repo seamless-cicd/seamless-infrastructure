@@ -359,7 +359,7 @@ export class StateMachineStack extends NestedStack {
     ).next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
-      .when(Condition.stringEquals('$.autoDeploy', 'true'), prodChain)
+      .when(Condition.booleanEquals('$.autoDeploy', true), prodChain)
       .otherwise(waitForManualApproval);
 
     const stagingChain = createStage(
@@ -368,7 +368,7 @@ export class StateMachineStack extends NestedStack {
     ).next(autoDeployChoice);
 
     const stagingChoice = new Choice(this, 'Use a Staging environment?')
-      .when(Condition.stringEquals('$.useStaging', 'true'), stagingChain)
+      .when(Condition.booleanEquals('$.useStaging', true), stagingChain)
       .otherwise(prodChain);
 
     const buildChain = createStage(
@@ -377,7 +377,7 @@ export class StateMachineStack extends NestedStack {
     ).next(stagingChoice);
 
     const fullPipelineChoice = new Choice(this, 'Run full pipeline?')
-      .when(Condition.stringEquals('$.runFull', 'true'), buildChain)
+      .when(Condition.booleanEquals('$.runFull', true), buildChain)
       .otherwise(success);
 
     const definition = createNotificationState('Notify: Pipeline started', {

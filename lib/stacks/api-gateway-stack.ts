@@ -25,10 +25,20 @@ export class ApiGatewayStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
+    // CORS configuration
+    // const corsProperty: CfnApi.CorsProperty = {
+    //   allowCredentials: true,
+    //   allowHeaders: ['*'],
+    //   allowMethods: ['*'],
+    //   allowOrigins: ['*'],
+    //   maxAge: 3600,
+    // };
+
     // Define HTTP API
     this.httpApi = new CfnApi(this, 'SeamlessHttpApi', {
       name: 'HttpApiToFargate',
       protocolType: 'HTTP',
+      // corsConfiguration: corsProperty,
     });
 
     // Target that connects the API gateway to Fargate through the VPC link
