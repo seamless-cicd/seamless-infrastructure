@@ -41,7 +41,7 @@ export class ApiGatewayStack extends NestedStack {
       // corsConfiguration: corsProperty,
     });
 
-    // Target that connects the API gateway to Fargate through the VPC link
+    // Target that connects the API gateway to Fargate
     const integration = new CfnIntegration(
       this,
       'SeamlessHttpApiGatewayIntegration',

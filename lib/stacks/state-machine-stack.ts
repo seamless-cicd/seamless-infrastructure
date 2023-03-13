@@ -7,7 +7,6 @@ import {
   TaskInput,
   IntegrationPattern,
   JsonPath,
-  Chain,
   Result,
   Choice,
   Condition,
@@ -99,6 +98,8 @@ const StageOrder = [
 
 // NOTE: State machine expects a particular JSON payload. See `/state_machine_input.example.json` for more information
 export class StateMachineStack extends NestedStack {
+  readonly stateMachine: StateMachine;
+
   constructor(scope: Construct, id: string, props?: StateMachineStackProps) {
     super(scope, id, props);
 
@@ -124,6 +125,25 @@ export class StateMachineStack extends NestedStack {
       });
     };
 
+    // Send entire state machine context to API Gateway
+    const createUpdateDbStatusTask = () => {
+      return new CallApiGatewayHttpApiEndpoint(
+        this,
+        `SeamlessCallHttpApiEndpoint-${randomUUID()}`,
+        {
+          apiId: props.httpApi.attrApiId,
+          apiStack: Stack.of(props.httpApi),
+          method: HttpMethod.POST,
+          requestBody: TaskInput.fromJsonPathAt('$.runStatus'),
+          apiPath: '/internal/status-updates',
+          headers: TaskInput.fromObject({
+            'Content-Type': ['application/json'],
+          }),
+          resultPath: '$.lastTaskOutput',
+        }
+      );
+    };
+
     // Define actions to run on a stage success
     const tasksOnSuccess = (stage: StageType) => {
       // Send SNS notification
@@ -141,8 +161,9 @@ export class StateMachineStack extends NestedStack {
         Status.SUCCESS
       );
 
-      return notifySuccess.next(updateCurrentStageInState);
-      // .next(createUpdateDbStatusTask());
+      return notifySuccess
+        .next(updateCurrentStageInState)
+        .next(createUpdateDbStatusTask());
     };
 
     // Define actions to run on a pipeline failure
@@ -154,6 +175,7 @@ export class StateMachineStack extends NestedStack {
         resultPath: `$.runStatus.run.status`,
       }
     )
+      .next(createUpdateDbStatusTask())
       .next(
         createNotificationState(`Notify: Pipeline failed`, {
           stageStatus: Status.FAILURE,
@@ -174,12 +196,10 @@ export class StateMachineStack extends NestedStack {
         Status.FAILURE
       );
 
-      return (
-        notifyFailure
-          .next(updateCurrentStageInState)
-          // .next(createUpdateDbStatusTask())
-          .next(tasksOnPipelineFailure)
-      );
+      return notifyFailure
+        .next(updateCurrentStageInState)
+        .next(createUpdateDbStatusTask())
+        .next(tasksOnPipelineFailure);
     };
 
     // Create an ECS run task with a given task definition
@@ -292,21 +312,6 @@ export class StateMachineStack extends NestedStack {
       );
     };
 
-    // TODO: Granularize database updates?
-    const createUpdateDbStatusTask = () => {
-      return new CallApiGatewayHttpApiEndpoint(
-        this,
-        `SeamlessCallHttpApiEndpoint-${randomUUID()}`,
-        {
-          apiId: props.httpApi.attrApiId,
-          apiStack: Stack.of(props.httpApi),
-          method: HttpMethod.POST,
-          requestBody: TaskInput.fromJsonPathAt('$.runStatus'),
-          apiPath: '/internal/status-updates',
-        }
-      );
-    };
-
     // Helper that creates Step Function Steps which spin up ECS containers
     const createStage = (
       currentStage: StageType,
@@ -325,12 +330,10 @@ export class StateMachineStack extends NestedStack {
         resultPath: '$.error',
       });
 
-      return (
-        updateCurrentStageInState
-          // .next(createUpdateDbStatusTask())
-          .next(ecsRunTask)
-          .next(tasksOnSuccess(currentStage))
-      );
+      return updateCurrentStageInState
+        .next(createUpdateDbStatusTask())
+        .next(ecsRunTask)
+        .next(tasksOnSuccess(currentStage));
     };
 
     // Success: Final state of entire pipeline
@@ -342,6 +345,7 @@ export class StateMachineStack extends NestedStack {
         resultPath: `$.runStatus.run.status`,
       }
     )
+      .next(createUpdateDbStatusTask())
       .next(
         createNotificationState('Notify: Pipeline succeeded', {
           stageStatus: Status.SUCCESS,
@@ -405,7 +409,7 @@ export class StateMachineStack extends NestedStack {
       .next(fullPipelineChoice);
 
     // Create a state machine that times out after 1 hour of runtime
-    new StateMachine(this, 'SeamlessStateMachine', {
+    this.stateMachine = new StateMachine(this, 'SeamlessStateMachine', {
       definition,
       timeout: Duration.minutes(60),
     });

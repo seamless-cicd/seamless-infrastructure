@@ -13,6 +13,8 @@ import { Role } from 'aws-cdk-lib/aws-iam';
 import { config } from 'dotenv';
 config();
 
+import { LOG_SUBSCRIBER_URL } from '../constants';
+
 // Configure shared Docker volume
 const createDockerVolumeMountPoint = (): MountPoint => {
   return {
@@ -63,6 +65,9 @@ const create = (
     logging: new AwsLogDriver({
       streamPrefix: `seamless-logs-${stageName}`,
     }),
+    environment: {
+      LOG_SUBSCRIBER_URL,
+    },
   });
 
   if (efsDnsName) {
