@@ -68,7 +68,7 @@ export class EcsBackendStack extends NestedStack {
     });
 
     const backendServiceImage = ContainerImage.fromRegistry(
-      process.env.ECR_REPO
+      'ejweiner/seamless-backend'
     );
 
     // TODO: Switch task image to use `fromAsset` for continued redeployment of backend
