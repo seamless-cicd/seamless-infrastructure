@@ -1,4 +1,4 @@
-import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
+import { NestedStack, NestedStackProps, Fn } from 'aws-cdk-lib';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
@@ -15,14 +15,12 @@ import {
   AWS_SECRET_ACCESS_KEY,
   GITHUB_PAT,
   GITHUB_REPO_URL,
-  LOG_SUBSCRIBER_URL,
 } from '../constants';
 
 export interface EcsBackendStackProps extends NestedStackProps {
   readonly vpc: IVpc;
   readonly rdsStack: RdsStack;
   readonly elastiCacheStack: ElastiCacheStack;
-  readonly stateMachineArn: string;
 }
 
 export class EcsBackendStack extends NestedStack {
@@ -78,14 +76,13 @@ export class EcsBackendStack extends NestedStack {
               props.elastiCacheStack.elastiCacheCluster
                 .attrRedisEndpointAddress,
             REDIS_PORT: '6379',
-            AWS_STEP_FUNCTION_ARN: props.stateMachineArn,
+            // AWS_STEP_FUNCTION_ARN: props.stateMachineArn,
             // Supplied in env
             AWS_ACCOUNT_ID,
             AWS_ACCESS_KEY,
             AWS_SECRET_ACCESS_KEY,
             GITHUB_PAT,
             GITHUB_REPO_URL,
-            LOG_SUBSCRIBER_URL,
           },
         },
       }

@@ -1,4 +1,10 @@
-import { NestedStack, NestedStackProps, Duration, Stack } from 'aws-cdk-lib';
+import {
+  NestedStack,
+  NestedStackProps,
+  Duration,
+  Stack,
+  CfnOutput,
+} from 'aws-cdk-lib';
 import {
   StateMachine,
   Pass,
@@ -412,6 +418,13 @@ export class StateMachineStack extends NestedStack {
     this.stateMachine = new StateMachine(this, 'SeamlessStateMachine', {
       definition,
       timeout: Duration.minutes(60),
+    });
+
+    // Supply the public URL of the API gateway
+    new CfnOutput(this, 'SeamlessStateMachineArn', {
+      value: this.stateMachine.stateMachineArn,
+      description: 'State machine ARN for the backend to reference',
+      exportName: 'SeamlessStateMachineArn',
     });
   }
 }

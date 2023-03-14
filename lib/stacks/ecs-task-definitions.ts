@@ -1,4 +1,4 @@
-import { NestedStack } from 'aws-cdk-lib';
+import { NestedStack, Fn } from 'aws-cdk-lib';
 import {
   Ec2TaskDefinition,
   ContainerImage,
@@ -12,8 +12,6 @@ import { Role } from 'aws-cdk-lib/aws-iam';
 
 import { config } from 'dotenv';
 config();
-
-import { LOG_SUBSCRIBER_URL } from '../constants';
 
 // Configure shared Docker volume
 const createDockerVolumeMountPoint = (): MountPoint => {
@@ -66,7 +64,7 @@ const create = (
       streamPrefix: `seamless-logs-${stageName}`,
     }),
     environment: {
-      LOG_SUBSCRIBER_URL,
+      LOG_SUBSCRIBER_URL: Fn.importValue('SeamlessAPIGatewayUrl').toString(),
     },
   });
 

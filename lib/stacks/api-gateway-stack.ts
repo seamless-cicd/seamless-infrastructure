@@ -26,19 +26,17 @@ export class ApiGatewayStack extends NestedStack {
     }
 
     // CORS configuration
-    // const corsProperty: CfnApi.CorsProperty = {
-    //   allowCredentials: true,
-    //   allowHeaders: ['*'],
-    //   allowMethods: ['*'],
-    //   allowOrigins: ['*'],
-    //   maxAge: 3600,
-    // };
+    const corsProperty: CfnApi.CorsProperty = {
+      allowHeaders: ['*'],
+      allowMethods: ['*'],
+      allowOrigins: ['*'],
+    };
 
     // Define HTTP API
     this.httpApi = new CfnApi(this, 'SeamlessHttpApi', {
       name: 'HttpApiToFargate',
       protocolType: 'HTTP',
-      // corsConfiguration: corsProperty,
+      corsConfiguration: corsProperty,
     });
 
     // Target that connects the API gateway to Fargate
@@ -71,8 +69,10 @@ export class ApiGatewayStack extends NestedStack {
 
     // Supply the public URL of the API gateway
     new CfnOutput(this, 'SeamlessAPIGatewayUrl', {
-      description: 'API Gateway URL to access public endpoints',
       value: this.httpApi.attrApiEndpoint,
+      // value: 'hello',
+      description: 'API Gateway URL to access public endpoints',
+      exportName: 'SeamlessAPIGatewayUrl',
     });
   }
 }

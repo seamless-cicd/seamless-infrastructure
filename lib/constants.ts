@@ -10,7 +10,6 @@ const envSchema = z.object({
   GITHUB_PAT: z.string(),
   GITHUB_REPO_URL: z.string().url(),
   SNS_SUBSCRIBER_URL: z.string().url(),
-  LOG_SUBSCRIBER_URL: z.string().url(),
 });
 
 export type EnvVars = z.infer<typeof envSchema>;
@@ -32,5 +31,4 @@ export const {
   GITHUB_PAT,
   GITHUB_REPO_URL,
   SNS_SUBSCRIBER_URL,
-  LOG_SUBSCRIBER_URL,
 } = parsedEnv.data;
