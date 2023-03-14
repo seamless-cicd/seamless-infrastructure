@@ -1,18 +1,26 @@
-import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
-import { SubnetType } from 'aws-cdk-lib/aws-ec2';
+import { NestedStack, NestedStackProps, Fn } from 'aws-cdk-lib';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
-import { DatabaseInstance } from 'aws-cdk-lib/aws-rds';
-
+import { ElastiCacheStack } from './elasticache-stack';
+import { RdsStack } from './rds-stack';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
 config();
 
+import {
+  AWS_ACCOUNT_ID,
+  AWS_ACCESS_KEY,
+  AWS_SECRET_ACCESS_KEY,
+  GITHUB_PAT,
+  GITHUB_REPO_URL,
+} from '../constants';
+
 export interface EcsBackendStackProps extends NestedStackProps {
   readonly vpc: IVpc;
-  readonly rdsInstance: DatabaseInstance;
+  readonly rdsStack: RdsStack;
+  readonly elastiCacheStack: ElastiCacheStack;
 }
 
 export class EcsBackendStack extends NestedStack {
@@ -27,40 +35,6 @@ export class EcsBackendStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
-    if (!process.env.ECR_REPO) {
-      throw new Error('No ECR repo provided');
-    }
-
-    if (!process.env.CONTAINER_PORT) {
-      throw new Error('No container port provided');
-    }
-
-    if (!process.env.DATABASE_URL) {
-      throw new Error(
-        'No database URL provided (needed for ECS backend service)'
-      );
-    }
-
-    if (!process.env.REDIS_PORT) {
-      throw new Error('No redis port provided');
-    }
-
-    if (!process.env.REDIS_HOST) {
-      throw new Error('No redis host provided');
-    }
-
-    if (!process.env.GET_LAMBDA) {
-      throw new Error('No get lambda provided');
-    }
-
-    if (!process.env.SET_LAMBDA) {
-      throw new Error('No set lambda provided');
-    }
-
-    if (!process.env.API_KEY) {
-      throw new Error('No API key provided');
-    }
-
     this.cluster = new Cluster(this, 'BackendServiceCluster', {
       vpc: props.vpc,
       clusterName: 'backend-service-cluster',
@@ -71,7 +45,6 @@ export class EcsBackendStack extends NestedStack {
       'ejweiner/seamless-backend'
     );
 
-    // TODO: Switch task image to use `fromAsset` for continued redeployment of backend
     this.fargate = new ApplicationLoadBalancedFargateService(
       this,
       'BackendServiceALBFargateService',
@@ -89,24 +62,27 @@ export class EcsBackendStack extends NestedStack {
         },
         taskImageOptions: {
           image: backendServiceImage,
-          containerPort: parseInt(process.env.CONTAINER_PORT),
-          // Specify environment variables for backend
+          containerPort: 3000,
           environment: {
-            PORT: '3000',
-            // TODO: Dynamically compute DATABASE_URL
-            DATABASE_URL: process.env.DATABASE_URL,
-            REDIS_HOST: process.env.REDIS_HOST || '',
-            REDIS_PORT: process.env.REDIS_PORT || '',
-            API_KEY: process.env.API_KEY || '',
-            GET_LAMBDA: process.env.GET_LAMBDA || '',
-            SET_LAMBDA: process.env.SET_LAMBDA || '',
-            AWS_ACCOUNT_ID: process.env.AWS_ACCOUNT_ID || '',
-            AWS_ACCESS_KEY: process.env.AWS_ACCESS_KEY || '',
-            AWS_SECRET_ACCESS_KEY: process.env.AWS_SECRET_ACCESS_KEY || '',
-            GITHUB_PAT: process.env.GITHUB_PAT || '',
-            GITHUB_REPO_URL: process.env.GITHUB_REPO_URL || '',
-            AWS_STEP_FUNCTION_ARN: process.env.AWS_STEP_FUNCTION_ARN || '',
-            LOG_SUBSCRIBER_URL: process.env.LOG_SUBSCRIBER_URL || '',
+            BACKEND_PORT: '3000',
+            DATABASE_URL: `postgresql://postgres:${props.rdsStack.rdsCredentialsSecret
+              .secretValueFromJson('password')
+              .unsafeUnwrap()}@${
+              props.rdsStack.rdsInstance.instanceEndpoint.hostname
+            }:${
+              props.rdsStack.rdsInstance.instanceEndpoint.port
+            }/seamlessRds?schema=public`,
+            REDIS_HOST:
+              props.elastiCacheStack.elastiCacheCluster
+                .attrRedisEndpointAddress,
+            REDIS_PORT: '6379',
+            // AWS_STEP_FUNCTION_ARN: props.stateMachineArn,
+            // Supplied in env
+            AWS_ACCOUNT_ID,
+            AWS_ACCESS_KEY,
+            AWS_SECRET_ACCESS_KEY,
+            GITHUB_PAT,
+            GITHUB_REPO_URL,
           },
         },
       }

@@ -1,4 +1,4 @@
-import { NestedStack } from 'aws-cdk-lib';
+import { NestedStack, Fn } from 'aws-cdk-lib';
 import {
   Ec2TaskDefinition,
   ContainerImage,
@@ -63,6 +63,9 @@ const create = (
     logging: new AwsLogDriver({
       streamPrefix: `seamless-logs-${stageName}`,
     }),
+    environment: {
+      LOG_SUBSCRIBER_URL: Fn.importValue('SeamlessAPIGatewayUrl').toString(),
+    },
   });
 
   if (efsDnsName) {
