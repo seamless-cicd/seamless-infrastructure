@@ -6,9 +6,10 @@ RUN apt-get update \
   && apt-get install -y git tini \
   && rm -rf /var/lib/apt/lists/*
 
-# /data/app is the mounted shared Docker volume on EFS
 # Use non-root user "node" (included in the official node images)
 # Grant user permission to remove existing source code if needed
+
+# /data/app is the mounted shared Docker volume on EFS
 RUN mkdir -p /data/app \
   && chown -R node:node /data/app \
   && chmod 700 /data/app

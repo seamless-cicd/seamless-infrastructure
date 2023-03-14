@@ -33,18 +33,18 @@ import {
 import { ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
 
-import { config } from 'dotenv';
-import { DatabaseInstance } from 'aws-cdk-lib/aws-rds';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { CfnApi } from 'aws-cdk-lib/aws-apigatewayv2';
 import { randomUUID } from 'crypto';
+
+import { config } from 'dotenv';
 config();
 
 export interface StateMachineStackProps extends NestedStackProps {
-  readonly topic: Topic;
-  readonly ecsCluster: Cluster;
-  readonly rdsInstance: DatabaseInstance;
   readonly vpc: IVpc;
+  readonly ecsCluster: Cluster;
+  readonly httpApi: CfnApi;
+  readonly topic: Topic;
   readonly prepareTaskDefinition: Ec2TaskDefinition;
   readonly codeQualityTaskDefinition: Ec2TaskDefinition;
   readonly unitTestTaskDefinition: Ec2TaskDefinition;
@@ -52,11 +52,9 @@ export interface StateMachineStackProps extends NestedStackProps {
   readonly integrationTestTaskDefinition: Ec2TaskDefinition;
   readonly deployStagingTaskDefinition: Ec2TaskDefinition;
   readonly deployProdTaskDefinition: Ec2TaskDefinition;
-  readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
-  readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
-  readonly httpApi: CfnApi;
 }
 
+// Enums
 enum StageType {
   PREPARE = 'PREPARE',
   CODE_QUALITY = 'CODE_QUALITY',
@@ -75,6 +73,7 @@ enum Status {
   IDLE = 'IDLE',
 }
 
+// Used to convert enums to field names
 const stageEnumToId = {
   [StageType.PREPARE]: 'prepare',
   [StageType.CODE_QUALITY]: 'codeQuality',
@@ -86,23 +85,8 @@ const stageEnumToId = {
   [StageType.OTHER]: 'deployProduction',
 };
 
-interface StageData {
-  id: string;
-  type: StageType;
-  status: Status;
-}
-
-// TODO: Update Stage Order as state machine expands
-const StageOrder = [
-  StageType.PREPARE,
-  StageType.CODE_QUALITY,
-  StageType.UNIT_TEST,
-  StageType.BUILD,
-  StageType.DEPLOY_STAGING,
-  StageType.DEPLOY_PROD,
-];
-
-// NOTE: State machine expects a particular JSON payload. See `/state_machine_input.example.json` for more information
+// NOTE: State machine expects a particular JSON payload.
+// See `/state_machine_input.example.json`
 export class StateMachineStack extends NestedStack {
   readonly stateMachine: StateMachine;
 
@@ -110,15 +94,23 @@ export class StateMachineStack extends NestedStack {
     super(scope, id, props);
 
     // Prop validation
-    if (!props?.topic) {
-      throw new Error('Topic not found');
+    if (!props?.vpc) {
+      throw new Error('VPC not provided');
     }
 
     if (!props?.ecsCluster) {
       throw new Error('ECS cluster not provided');
     }
 
-    // SNS notification tasks
+    if (!props?.httpApi) {
+      throw new Error('HTTP API not found');
+    }
+
+    if (!props?.topic) {
+      throw new Error('Topic not found');
+    }
+
+    // SNS notification task
     const createNotificationState = (id: string, message: object) => {
       return new SnsPublish(this, id, {
         topic: props.topic,
@@ -127,7 +119,22 @@ export class StateMachineStack extends NestedStack {
       });
     };
 
-    // Send entire state machine context to API Gateway
+    // Context object update task
+    // The shape of this object is in `/state_machine_input.example.json`, field `runStatus`
+    // This context is passed through every stage
+    const createUpdateStageStatusTask = (stage: StageType, status: Status) => {
+      return new Pass(
+        this,
+        `Update state machine context: ${stage} is now ${status}`,
+        {
+          result: Result.fromString(status),
+          resultPath: `$.runStatus.stages.${stageEnumToId[stage]}.status`,
+        }
+      );
+    };
+
+    // Status update task
+    // Sends entire state machine context to API Gateway (internal route)
     const createUpdateDbStatusTask = () => {
       return new CallApiGatewayHttpApiEndpoint(
         this,
@@ -146,66 +153,78 @@ export class StateMachineStack extends NestedStack {
       );
     };
 
-    // Define actions to run on a stage success
+    // Pipeline success tasks
+    const success = createNotificationState('Notify: Pipeline succeeded', {
+      stageStatus: Status.SUCCESS,
+      runStatus: JsonPath.objectAt(`$.runStatus`),
+    })
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run is now ${Status.SUCCESS}`,
+          {
+            result: Result.fromString(Status.SUCCESS),
+            resultPath: `$.runStatus.run.status`,
+          }
+        )
+      )
+      .next(createUpdateDbStatusTask())
+      .next(new Succeed(this, 'Pipeline succeeded')); // Terminal state
+
+    // Pipeline failure tasks
+    const tasksOnPipelineFailure = createNotificationState(
+      `Notify: Pipeline failed`,
+      {
+        stageStatus: Status.FAILURE,
+        runStatus: JsonPath.objectAt(`$.runStatus`),
+      }
+    )
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run is now ${Status.FAILURE}`,
+          {
+            result: Result.fromString(Status.FAILURE),
+            resultPath: `$.runStatus.run.status`,
+          }
+        )
+      )
+      .next(createUpdateDbStatusTask())
+      .next(new Fail(this, `Pipeline failed`)); // Terminal state
+
+    // Stage start tasks (no notifications)
+    const tasksOnStart = (stage: StageType) => {
+      return createUpdateStageStatusTask(stage, Status.IN_PROGRESS).next(
+        createUpdateDbStatusTask()
+      );
+    };
+
+    // Stage success tasks
     const tasksOnSuccess = (stage: StageType) => {
-      // Send SNS notification
-      const notifySuccess = createNotificationState(
-        `Notify: ${stage} succeeded`,
-        {
-          stageStatus: Status.SUCCESS,
-          runStatus: JsonPath.objectAt(`$.runStatus`),
-        }
-      );
-
-      // Mark own state as complete
-      const updateCurrentStageInState = createUpdateStageStatusTask(
-        stage,
-        Status.SUCCESS
-      );
-
-      return notifySuccess
-        .next(updateCurrentStageInState)
+      return createNotificationState(`Notify: ${stage} succeeded`, {
+        stageStatus: Status.SUCCESS,
+        runStatus: JsonPath.objectAt(`$.runStatus`),
+      })
+        .next(createUpdateStageStatusTask(stage, Status.SUCCESS))
         .next(createUpdateDbStatusTask());
     };
 
-    // Define actions to run on a pipeline failure
-    const tasksOnPipelineFailure = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.FAILURE}`,
-      {
-        result: Result.fromString(Status.FAILURE),
-        resultPath: `$.runStatus.run.status`,
-      }
-    )
-      .next(createUpdateDbStatusTask())
-      .next(
-        createNotificationState(`Notify: Pipeline failed`, {
+    // Stage failure tasks
+    const tasksOnFailure = (stage: StageType) => {
+      return (
+        createNotificationState(`Notify: ${stage} failed`, {
           stageStatus: Status.FAILURE,
           runStatus: JsonPath.objectAt(`$.runStatus`),
         })
-      )
-      .next(new Fail(this, `Pipeline failed`));
-
-    // Define actions to run on a stage failure
-    const tasksOnFailure = (stage: StageType) => {
-      const notifyFailure = createNotificationState(`Notify: ${stage} failed`, {
-        stageStatus: Status.FAILURE,
-        runStatus: JsonPath.objectAt(`$.runStatus`),
-      });
-
-      const updateCurrentStageInState = createUpdateStageStatusTask(
-        stage,
-        Status.FAILURE
+          // Individual stage failure causes the entire pipeline to fail
+          .next(createUpdateStageStatusTask(stage, Status.FAILURE))
+          .next(createUpdateDbStatusTask())
+          .next(tasksOnPipelineFailure)
       );
-
-      return notifyFailure
-        .next(updateCurrentStageInState)
-        .next(createUpdateDbStatusTask())
-        .next(tasksOnPipelineFailure);
     };
 
-    // Create an ECS run task with a given task definition
-    // Entire environment passed as input is injecteed into the task
+    // Executor tasks to be run in ECS
+    // Environment variables passed as state machine input are injected into each task
     const createEcsRunTask = (
       stage: StageType,
       taskDefinition: Ec2TaskDefinition
@@ -214,6 +233,11 @@ export class StateMachineStack extends NestedStack {
         integrationPattern: IntegrationPattern.RUN_JOB,
         cluster: props.ecsCluster,
         taskDefinition,
+        assignPublicIp: false,
+        launchTarget: new EcsEc2LaunchTarget({
+          placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
+        }),
+        resultPath: '$.lastTaskOutput',
         containerOverrides: [
           {
             containerDefinition:
@@ -296,66 +320,27 @@ export class StateMachineStack extends NestedStack {
             ],
           },
         ],
-        resultPath: '$.lastTaskOutput',
-        launchTarget: new EcsEc2LaunchTarget({
-          placementStrategies: [PlacementStrategy.spreadAcrossInstances()],
-        }),
       });
     };
 
-    const createUpdateStageStatusTask = (stage: StageType, status: Status) => {
-      return new Pass(
-        this,
-        `Update state machine context: ${stage} is now ${status}`,
-        {
-          result: Result.fromString(status),
-          resultPath: `$.runStatus.stages.${stageEnumToId[stage]}.status`,
-        }
-      );
-    };
-
-    // Helper that creates Step Function Steps which spin up ECS containers
+    // Wrapper around `createEcsRunTask`; adds notifications, context, status updates
     const createStage = (
       currentStage: StageType,
       taskDefinition: Ec2TaskDefinition
     ) => {
-      // Mark current Stage as in progress
-      const updateCurrentStageInState = createUpdateStageStatusTask(
-        currentStage,
-        Status.IN_PROGRESS
-      );
-
-      const ecsRunTask = createEcsRunTask(
-        currentStage,
-        taskDefinition
-      ).addCatch(tasksOnFailure(currentStage), {
-        resultPath: '$.error',
-      });
-
-      return updateCurrentStageInState
-        .next(createUpdateDbStatusTask())
-        .next(ecsRunTask)
+      // Update context object
+      return tasksOnStart(currentStage)
+        .next(
+          createEcsRunTask(currentStage, taskDefinition)
+            // Add error handling
+            .addCatch(tasksOnFailure(currentStage), {
+              resultPath: '$.error',
+            })
+        )
         .next(tasksOnSuccess(currentStage));
     };
 
-    // Success: Final state of entire pipeline
-    const success = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.SUCCESS}`,
-      {
-        result: Result.fromString(Status.SUCCESS),
-        resultPath: `$.runStatus.run.status`,
-      }
-    )
-      .next(createUpdateDbStatusTask())
-      .next(
-        createNotificationState('Notify: Pipeline succeeded', {
-          stageStatus: Status.SUCCESS,
-          runStatus: JsonPath.objectAt(`$.runStatus`),
-        })
-      )
-      .next(new Succeed(this, 'Pipeline succeeded'));
-
+    // State machine step chaining
     const prodChain = createStage(
       StageType.DEPLOY_PROD,
       props.deployProdTaskDefinition

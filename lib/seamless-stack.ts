@@ -62,47 +62,44 @@ export class SeamlessStack extends Stack {
     apiGatewayStack.addDependency(ecsBackendStack);
 
     // ECS
-    // const ecsTasksStack = new EcsTasksStack(this, 'SeamlessEcs', {
-    //   vpc: vpcStack.vpc,
-    //   efs: efsStack.efs,
-    // });
-
+    const ecsTasksStack = new EcsTasksStack(this, 'SeamlessEcs', {
+      vpc: vpcStack.vpc,
+      efs: efsStack.efs,
+      // API Gateway endpoint to send container logs to
+      logSubscriberUrl: apiGatewayStack.httpApi.attrApiEndpoint,
+    });
     // ECS executors need the API Gateway URL so they can send logs
-    // ecsTasksStack.addDependency(apiGatewayStack);
+    ecsTasksStack.addDependency(apiGatewayStack);
 
     // SNS
-    // const snsStack = new SnsStack(this, 'SeamlessSns');
-
-    // snsStack.addDependency(apiGatewayStack);
+    const snsStack = new SnsStack(this, 'SeamlessSns');
+    snsStack.addDependency(apiGatewayStack);
 
     // State machine
-    // const stateMachineStack = new StateMachineStack(
-    //   this,
-    //   'SeamlessStateMachine',
-    //   {
-    //     vpc: vpcStack.vpc,
-    //     topic: snsStack.topic,
-    //     ecsCluster: ecsTasksStack.cluster,
-    //     rdsInstance: rdsStack.rdsInstance,
-    //     sampleSuccessTaskDefinition: ecsTasksStack.sampleSuccessTaskDefinition,
-    //     sampleFailureTaskDefinition: ecsTasksStack.sampleFailureTaskDefinition,
-    //     prepareTaskDefinition: ecsTasksStack.prepareTaskDefinition,
-    //     codeQualityTaskDefinition: ecsTasksStack.codeQualityTaskDefinition,
-    //     unitTestTaskDefinition: ecsTasksStack.unitTestTaskDefinition,
-    //     buildTaskDefinition: ecsTasksStack.buildTaskDefinition,
-    //     integrationTestTaskDefinition:
-    //       ecsTasksStack.integrationTestTaskDefinition,
-    //     deployStagingTaskDefinition: ecsTasksStack.deployStagingTaskDefinition,
-    //     deployProdTaskDefinition: ecsTasksStack.deployProdTaskDefinition,
-    //     httpApi: apiGatewayStack.httpApi,
-    //   }
-    // );
+    const stateMachineStack = new StateMachineStack(
+      this,
+      'SeamlessStateMachine',
+      {
+        vpc: vpcStack.vpc,
+        ecsCluster: ecsTasksStack.cluster,
+        httpApi: apiGatewayStack.httpApi,
+        topic: snsStack.topic,
+        prepareTaskDefinition: ecsTasksStack.prepareTaskDefinition,
+        codeQualityTaskDefinition: ecsTasksStack.codeQualityTaskDefinition,
+        unitTestTaskDefinition: ecsTasksStack.unitTestTaskDefinition,
+        buildTaskDefinition: ecsTasksStack.buildTaskDefinition,
+        integrationTestTaskDefinition:
+          ecsTasksStack.integrationTestTaskDefinition,
+        deployStagingTaskDefinition: ecsTasksStack.deployStagingTaskDefinition,
+        deployProdTaskDefinition: ecsTasksStack.deployProdTaskDefinition,
+      }
+    );
 
-    // stateMachineStack.addDependency(vpcStack);
-    // stateMachineStack.addDependency(snsStack);
-    // stateMachineStack.addDependency(ecsTasksStack);
-    // stateMachineStack.addDependency(rdsStack);
-    // stateMachineStack.addDependency(ecsBackendStack);
-    // stateMachineStack.addDependency(apiGatewayStack);
+    stateMachineStack.addDependency(vpcStack);
+    stateMachineStack.addDependency(snsStack);
+    stateMachineStack.addDependency(ecsTasksStack);
+    stateMachineStack.addDependency(rdsStack);
+    stateMachineStack.addDependency(ecsBackendStack);
+    stateMachineStack.addDependency(apiGatewayStack);
   }
 }

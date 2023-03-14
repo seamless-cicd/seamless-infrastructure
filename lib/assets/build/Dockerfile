@@ -1,29 +1,24 @@
 FROM --platform=linux/amd64 docker:dind AS base
 
-# Install node
-RUN apk add --no-cache nodejs npm
+RUN apk add --no-cache \
+    nodejs \
+    npm \
+    git \
+    tini
 
-RUN apt-get update \
-  && apt-get install -y git tini \
-  && rm -rf /var/lib/apt/lists/*
+RUN mkdir -p /data/app
 
-RUN mkdir -p /data/app \
-  && chown -R node:node /data/app \
-  && chmod 700 /data/app
-
-RUN mkdir -p /usr/app \
-  && chown -R node:node /usr/app \
-  && chmod 700 /usr/app
+RUN mkdir -p /usr/app
 
 WORKDIR /usr/app
 
-USER node
+USER root
 
-COPY --chown=node:node package*.json ./
+COPY package*.json ./
 RUN npm install
 
-COPY --chown=node:node src ./src
-COPY --chown=node:node tsconfig.json ./
+COPY src ./src
+COPY tsconfig.json ./
 
 RUN npm run build
 

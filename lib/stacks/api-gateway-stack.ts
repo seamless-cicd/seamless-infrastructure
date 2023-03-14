@@ -80,6 +80,20 @@ export class ApiGatewayStack extends NestedStack {
       target: `integrations/${integration.ref}`,
     });
 
+    // Defines a public /api/* route
+    new CfnRoute(this, 'SeamlessPublicHttpRoute', {
+      apiId: this.httpApi.attrApiId,
+      routeKey: 'ANY /api',
+      target: `integrations/${integration.ref}`,
+    });
+
+    // Defines a restricted /internal/* route (restrictions not applied yet)
+    new CfnRoute(this, 'SeamlessInternalHttpRoute', {
+      apiId: this.httpApi.attrApiId,
+      routeKey: 'ANY /internal',
+      target: `integrations/${integration.ref}`,
+    });
+
     // Supply the public URL of the API gateway
     new CfnOutput(this, 'SeamlessApiGatewayUrl', {
       value: this.httpApi.attrApiEndpoint,

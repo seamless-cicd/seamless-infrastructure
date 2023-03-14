@@ -16,7 +16,7 @@ config();
 // Configure shared Docker volume
 const createDockerVolumeMountPoint = (): MountPoint => {
   return {
-    sourceVolume: 'seamless-efs-docker-volume',
+    sourceVolume: 'SeamlessEfsDockerVolume',
     containerPath: '/data',
     readOnly: false,
   };
@@ -43,35 +43,39 @@ const create = (
   stageName: string,
   taskDefinitionId: string,
   efsDnsName: string,
+  logSubscriberUrl: string,
   taskRole: Role
 ) => {
   const taskDefinition = new Ec2TaskDefinition(
     ecsTasksStack,
     taskDefinitionId,
     {
-      family: `seamless-taskdefinition-${stageName}`,
+      family: `SeamlessExecutor${taskDefinitionId}`,
       networkMode: NetworkMode.BRIDGE,
       taskRole,
     }
   );
 
   // Add application container
-  const container = taskDefinition.addContainer(stageName, {
-    image: ContainerImage.fromAsset(`./lib/assets/${stageName}`),
-    cpu: 256,
-    memoryLimitMiB: 512,
-    logging: new AwsLogDriver({
-      streamPrefix: `seamless-logs-${stageName}`,
-    }),
-    environment: {
-      LOG_SUBSCRIBER_URL: Fn.importValue('SeamlessApiGatewayUrl').toString(),
-    },
-  });
+  const container = taskDefinition.addContainer(
+    `SeamlessExecutor${taskDefinitionId}`,
+    {
+      image: ContainerImage.fromAsset(`./lib/assets/${stageName}`),
+      cpu: 256,
+      memoryLimitMiB: 512,
+      logging: new AwsLogDriver({
+        streamPrefix: `SeamlessExecutor${taskDefinitionId}`,
+      }),
+      environment: {
+        LOG_SUBSCRIBER_URL: logSubscriberUrl,
+      },
+    }
+  );
 
   if (efsDnsName) {
     // Add shared Docker volume
     taskDefinition.addVolume({
-      name: 'seamless-efs-docker-volume',
+      name: 'SeamlessEfsDockerVolume',
       dockerVolumeConfiguration: createDockerVolumeConfig(efsDnsName),
     });
 
@@ -85,6 +89,7 @@ const create = (
 const createBuildTaskDefinition = (
   ecsTasksStack: NestedStack,
   efsDnsName: string,
+  logSubscriberUrl: string,
   taskRole: Role
 ) => {
   const { taskDefinition, container } = create(
@@ -92,19 +97,20 @@ const createBuildTaskDefinition = (
     'build',
     'Build',
     efsDnsName,
+    logSubscriberUrl,
     taskRole
   );
 
   // Add bind mount
   taskDefinition.addVolume({
-    name: 'docker-socket',
+    name: 'DockerSocket',
     host: {
       sourcePath: '/var/run/docker.sock',
     },
   });
 
   const dockerSocketMountPoint: MountPoint = {
-    sourceVolume: 'docker-socket',
+    sourceVolume: 'DockerSocket',
     containerPath: '/var/run/docker.sock',
     readOnly: false,
   };
