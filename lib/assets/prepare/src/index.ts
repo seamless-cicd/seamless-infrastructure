@@ -2,7 +2,6 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 import fs from 'fs-extra';
-import { execaCommand } from 'execa';
 import {
   LogEmitter,
   createLoggedProcess,

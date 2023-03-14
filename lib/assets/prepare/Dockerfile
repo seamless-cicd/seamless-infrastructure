@@ -14,11 +14,11 @@ RUN mkdir -p /data/app \
   && chmod 700 /data/app
 
 # /usr/app is where the Seamless Prepare Stage executor script is stored
-RUN mkdir -p /usr/seamless-prepare \
-  && chown -R node:node /usr/seamless-prepare \
-  && chmod 700 /usr/seamless-prepare
+RUN mkdir -p /usr/app \
+  && chown -R node:node /usr/app \
+  && chmod 700 /usr/app
 
-WORKDIR /usr/seamless-prepare
+WORKDIR /usr/app
 
 USER node
 
