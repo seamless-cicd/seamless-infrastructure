@@ -33,8 +33,6 @@ export interface EcsTasksStackProps extends NestedStackProps {
 
 export class EcsTasksStack extends NestedStack {
   readonly cluster: Cluster;
-  readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
-  readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
   readonly prepareTaskDefinition: Ec2TaskDefinition;
   readonly codeQualityTaskDefinition: Ec2TaskDefinition;
   readonly unitTestTaskDefinition: Ec2TaskDefinition;
@@ -127,17 +125,6 @@ export class EcsTasksStack extends NestedStack {
         taskRole
       ).taskDefinition;
     };
-
-    // Sample placeholders
-    this.sampleSuccessTaskDefinition = createTaskDefinition(
-      'sample-success',
-      'SampleSuccess'
-    );
-
-    this.sampleFailureTaskDefinition = createTaskDefinition(
-      'sample-failure',
-      'SampleFailure'
-    );
 
     // Executor task definitions
     this.prepareTaskDefinition = createTaskDefinition('prepare', 'Prepare');

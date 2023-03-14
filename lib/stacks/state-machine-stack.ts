@@ -52,8 +52,6 @@ export interface StateMachineStackProps extends NestedStackProps {
   readonly integrationTestTaskDefinition: Ec2TaskDefinition;
   readonly deployStagingTaskDefinition: Ec2TaskDefinition;
   readonly deployProdTaskDefinition: Ec2TaskDefinition;
-  readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
-  readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
   readonly httpApi: CfnApi;
 }
 
@@ -116,10 +114,6 @@ export class StateMachineStack extends NestedStack {
 
     if (!props?.ecsCluster) {
       throw new Error('ECS cluster not provided');
-    }
-
-    if (!props?.sampleSuccessTaskDefinition) {
-      throw new Error('No sample success definition provided');
     }
 
     // SNS notification tasks
