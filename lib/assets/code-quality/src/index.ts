@@ -13,20 +13,23 @@ const DIR_TO_CLONE_INTO = '/data/app';
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
+// Logger wrapper that sends along stage ID
+const log = async (message: string) => {
+  await logger.emit(message, 'stdout', { stageId: STAGE_ID });
+};
+
 async function checkCodeQuality(): Promise<void> {
-  await logger.emit(`Code quality stage starting; stage ID: ${STAGE_ID}`);
+  await log(`Code quality stage starting; stage ID: ${STAGE_ID}`);
 
   // Verify that source code was cloned
   if (!fs.existsSync(DIR_TO_CLONE_INTO)) {
-    await logger.emit(
-      `Source code hasn't been cloned into ${DIR_TO_CLONE_INTO}`,
-    );
+    await log(`Source code hasn't been cloned into ${DIR_TO_CLONE_INTO}`);
     process.exit(1);
   }
 
   // Run code quality command
   try {
-    await logger.emit(`Running code quality command:  ${CODE_QUALITY_COMMAND}`);
+    await log(`Running code quality command:  ${CODE_QUALITY_COMMAND}`);
     process.chdir(DIR_TO_CLONE_INTO);
 
     const codeQualityProcess = await createLoggedProcess(
@@ -34,12 +37,13 @@ async function checkCodeQuality(): Promise<void> {
       CODE_QUALITY_COMMAND.split(' ').slice(1),
       {},
       LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
     );
 
     if (codeQualityProcess.exitCode === 0) {
-      await logger.emit('Code quality check succeeded');
+      await log('Code quality check succeeded');
     } else {
-      await logger.emit('Code quality check failed');
+      await log('Code quality check failed');
     }
   } catch (error) {
     await handleProcessError(error, LOG_SUBSCRIBER_URL);

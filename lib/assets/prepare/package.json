@@ -10,7 +10,7 @@
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
-    "@seamless-cicd/execa-logged-process": "^0.0.3",
+    "@seamless-cicd/execa-logged-process": "^0.0.5",
     "dotenv": "^16.0.3",
     "execa": "^7.1.0",
     "fs-extra": "^11.1.0",

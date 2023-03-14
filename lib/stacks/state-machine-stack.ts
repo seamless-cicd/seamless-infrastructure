@@ -154,73 +154,77 @@ export class StateMachineStack extends NestedStack {
     };
 
     // Pipeline success tasks
-    const success = createNotificationState('Notify: Pipeline succeeded', {
-      stageStatus: Status.SUCCESS,
-      runStatus: JsonPath.objectAt(`$.runStatus`),
-    })
-      .next(
-        new Pass(
-          this,
-          `Update state machine context: Run is now ${Status.SUCCESS}`,
-          {
-            result: Result.fromString(Status.SUCCESS),
-            resultPath: `$.runStatus.run.status`,
-          }
-        )
-      )
+    const success = new Pass(
+      this,
+      `Update state machine context: Run is now ${Status.SUCCESS}`,
+      {
+        result: Result.fromString(Status.SUCCESS),
+        resultPath: `$.runStatus.run.status`,
+      }
+    )
       .next(createUpdateDbStatusTask())
+      .next(
+        createNotificationState('Notify: Pipeline succeeded', {
+          stageStatus: Status.SUCCESS,
+          runStatus: JsonPath.objectAt(`$.runStatus`),
+        })
+      )
       .next(new Succeed(this, 'Pipeline succeeded')); // Terminal state
 
     // Pipeline failure tasks
-    const tasksOnPipelineFailure = createNotificationState(
-      `Notify: Pipeline failed`,
+    const tasksOnPipelineFailure = new Pass(
+      this,
+      `Update state machine context: Run is now ${Status.FAILURE}`,
       {
-        stageStatus: Status.FAILURE,
-        runStatus: JsonPath.objectAt(`$.runStatus`),
+        result: Result.fromString(Status.FAILURE),
+        resultPath: `$.runStatus.run.status`,
       }
     )
-      .next(
-        new Pass(
-          this,
-          `Update state machine context: Run is now ${Status.FAILURE}`,
-          {
-            result: Result.fromString(Status.FAILURE),
-            resultPath: `$.runStatus.run.status`,
-          }
-        )
-      )
       .next(createUpdateDbStatusTask())
+      .next(
+        createNotificationState(`Notify: Pipeline failed`, {
+          stageStatus: Status.FAILURE,
+          runStatus: JsonPath.objectAt(`$.runStatus`),
+        })
+      )
       .next(new Fail(this, `Pipeline failed`)); // Terminal state
 
-    // Stage start tasks (no notifications)
+    // Stage start tasks
     const tasksOnStart = (stage: StageType) => {
-      return createUpdateStageStatusTask(stage, Status.IN_PROGRESS).next(
-        createUpdateDbStatusTask()
-      );
+      return createUpdateStageStatusTask(stage, Status.IN_PROGRESS)
+        .next(createUpdateDbStatusTask())
+        .next(
+          createNotificationState(`Notify: ${stage} started`, {
+            stageStatus: Status.IN_PROGRESS,
+            runStatus: JsonPath.objectAt(`$.runStatus`),
+          })
+        );
     };
 
     // Stage success tasks
     const tasksOnSuccess = (stage: StageType) => {
-      return createNotificationState(`Notify: ${stage} succeeded`, {
-        stageStatus: Status.SUCCESS,
-        runStatus: JsonPath.objectAt(`$.runStatus`),
-      })
-        .next(createUpdateStageStatusTask(stage, Status.SUCCESS))
-        .next(createUpdateDbStatusTask());
+      return createUpdateStageStatusTask(stage, Status.SUCCESS)
+        .next(createUpdateDbStatusTask())
+        .next(
+          createNotificationState(`Notify: ${stage} succeeded`, {
+            stageStatus: Status.SUCCESS,
+            runStatus: JsonPath.objectAt(`$.runStatus`),
+          })
+        );
     };
 
     // Stage failure tasks
+    // Individual stage failure causes the entire pipeline to fail
     const tasksOnFailure = (stage: StageType) => {
-      return (
-        createNotificationState(`Notify: ${stage} failed`, {
-          stageStatus: Status.FAILURE,
-          runStatus: JsonPath.objectAt(`$.runStatus`),
-        })
-          // Individual stage failure causes the entire pipeline to fail
-          .next(createUpdateStageStatusTask(stage, Status.FAILURE))
-          .next(createUpdateDbStatusTask())
-          .next(tasksOnPipelineFailure)
-      );
+      return createUpdateStageStatusTask(stage, Status.FAILURE)
+        .next(createUpdateDbStatusTask())
+        .next(
+          createNotificationState(`Notify: ${stage} failed`, {
+            stageStatus: Status.FAILURE,
+            runStatus: JsonPath.objectAt(`$.runStatus`),
+          })
+        )
+        .next(tasksOnPipelineFailure);
     };
 
     // Executor tasks to be run in ECS
@@ -261,8 +265,20 @@ export class StateMachineStack extends NestedStack {
               },
               {
                 name: 'AWS_SECRET_ACCESS_KEY',
-                value: JsonPath.stringAt('$.containerVariables.awsAccessKey'),
+                value: JsonPath.stringAt(
+                  '$.containerVariables.awsSecretAccessKey'
+                ),
               },
+              // {
+              //   name: 'GITHUB_CLIENT_ID',
+              //   value: JsonPath.stringAt('$.containerVariables.githubClientId'),
+              // },
+              // {
+              //   name: 'GITHUB_CLIENT_SECRET',
+              //   value: JsonPath.stringAt(
+              //     '$.containerVariables.githubClientSecret'
+              //   ),
+              // },
               {
                 name: 'GITHUB_PAT',
                 value: JsonPath.stringAt('$.containerVariables.githubPat'),
@@ -374,19 +390,19 @@ export class StateMachineStack extends NestedStack {
       .when(Condition.booleanEquals('$.runFull', true), buildChain)
       .otherwise(success);
 
-    const definition = createNotificationState('Notify: Pipeline started', {
-      stageStatus: Status.IN_PROGRESS,
-      runStatus: JsonPath.objectAt(`$.runStatus`),
-    })
+    const definition = new Pass(
+      this,
+      `Update state machine context: Run is now ${Status.IN_PROGRESS}`,
+      {
+        result: Result.fromString(Status.IN_PROGRESS),
+        resultPath: `$.runStatus.run.status`,
+      }
+    )
       .next(
-        new Pass(
-          this,
-          `Update state machine context: Run is now ${Status.IN_PROGRESS}`,
-          {
-            result: Result.fromString(Status.IN_PROGRESS),
-            resultPath: `$.runStatus.run.status`,
-          }
-        )
+        createNotificationState('Notify: Pipeline started', {
+          stageStatus: Status.IN_PROGRESS,
+          runStatus: JsonPath.objectAt(`$.runStatus`),
+        })
       )
       .next(createStage(StageType.PREPARE, props.prepareTaskDefinition))
       .next(

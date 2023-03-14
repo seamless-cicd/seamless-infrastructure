@@ -14,20 +14,23 @@ const DIR_TO_CLONE_INTO = '/data/app';
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
+// Logger wrapper that sends along stage ID
+const log = async (message: string) => {
+  await logger.emit(message, 'stdout', { stageId: STAGE_ID });
+};
+
 async function cloneRepo(): Promise<void> {
-  await logger.emit(`Cloning stage starting; stage ID: ${STAGE_ID}`);
+  await log(`Cloning stage starting; stage ID: ${STAGE_ID}`);
 
   // Remove any existing source code
   if (fs.existsSync(DIR_TO_CLONE_INTO)) {
-    await logger.emit(
-      `Removing existing source code from ${DIR_TO_CLONE_INTO}`,
-    );
+    await log(`Removing existing source code from ${DIR_TO_CLONE_INTO}`);
     await fs.emptyDir(DIR_TO_CLONE_INTO);
   }
 
   // Clone the repository
   try {
-    await logger.emit(`Cloning source code from ${GITHUB_REPO_URL}`);
+    await log(`Cloning source code from ${GITHUB_REPO_URL}`);
 
     // GitHub classic PAT can be spliced into the repo URL for authentication
     const cloneProcess = await createLoggedProcess(
@@ -39,12 +42,13 @@ async function cloneRepo(): Promise<void> {
       ],
       {},
       LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
     );
 
     if (cloneProcess.exitCode === 0) {
-      await logger.emit('Cloning succeeded');
+      await log('Cloning succeeded');
     } else {
-      await logger.emit('Cloning failed');
+      await log('Cloning failed');
       // End process here because dependency installation won't work
       process.exit(1);
     }
@@ -54,7 +58,7 @@ async function cloneRepo(): Promise<void> {
 
   // Install dependencies
   try {
-    await logger.emit('Installing dependencies');
+    await log('Installing dependencies');
     process.chdir(DIR_TO_CLONE_INTO);
 
     const installProcess = await createLoggedProcess(
@@ -62,12 +66,13 @@ async function cloneRepo(): Promise<void> {
       ['ci'],
       {},
       LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
     );
 
     if (installProcess.exitCode === 0) {
-      await logger.emit('Dependencies installed');
+      await log('Dependencies installed');
     } else {
-      await logger.emit('Failed to install dependencies; deleting cloned code');
+      await log('Failed to install dependencies; deleting cloned code');
       await fs.emptyDir(DIR_TO_CLONE_INTO);
       process.exit(1);
     }

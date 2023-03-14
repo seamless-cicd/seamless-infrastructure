@@ -20,6 +20,7 @@ export class VpcStack extends NestedStack {
           cidrMask: 24,
         },
         {
+          // Fix typo - Requires destroy and re-reploy
           name: 'SeamlesPrivateSubnet',
           subnetType: SubnetType.PRIVATE_WITH_EGRESS,
           cidrMask: 24,

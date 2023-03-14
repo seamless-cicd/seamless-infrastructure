@@ -15,3 +15,6 @@ cdk.context.json
 
 # State machine input
 state_machine_input.json
+
+# Keypair
+SeamlessBastionHostKeypair.pem
