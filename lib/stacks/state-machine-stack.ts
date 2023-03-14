@@ -118,10 +118,6 @@ export class StateMachineStack extends NestedStack {
       throw new Error('ECS cluster not provided');
     }
 
-    if (!props?.sampleSuccessTaskDefinition) {
-      throw new Error('No sample success definition provided');
-    }
-
     // SNS notification tasks
     const createNotificationState = (id: string, message: object) => {
       return new SnsPublish(this, id, {

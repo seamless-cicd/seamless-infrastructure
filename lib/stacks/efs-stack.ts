@@ -1,6 +1,5 @@
-import { Construct } from 'constructs';
 import { NestedStack, NestedStackProps, RemovalPolicy } from 'aws-cdk-lib';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import {
   FileSystem,
   LifecyclePolicy,
@@ -8,6 +7,7 @@ import {
   ThroughputMode,
   OutOfInfrequentAccessPolicy,
 } from 'aws-cdk-lib/aws-efs';
+import { Construct } from 'constructs';
 
 interface EfsStackProps extends NestedStackProps {
   readonly vpc: IVpc;
@@ -27,7 +27,6 @@ export class EfsStack extends NestedStack {
     // Create file system to serve as shared Docker volume
     this.efs = new FileSystem(this, 'SeamlessEfs', {
       vpc: props.vpc,
-      fileSystemName: 'SeamlessEfs',
       enableAutomaticBackups: true,
       encrypted: true,
       performanceMode: PerformanceMode.GENERAL_PURPOSE,
@@ -35,6 +34,9 @@ export class EfsStack extends NestedStack {
       lifecyclePolicy: LifecyclePolicy.AFTER_14_DAYS,
       outOfInfrequentAccessPolicy: OutOfInfrequentAccessPolicy.AFTER_1_ACCESS,
       removalPolicy: RemovalPolicy.DESTROY,
+      vpcSubnets: {
+        subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+      },
     });
 
     this.efs.connections.allowDefaultPortFromAnyIpv4('Allow NFS');

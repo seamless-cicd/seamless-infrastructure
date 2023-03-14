@@ -128,17 +128,6 @@ export class EcsTasksStack extends NestedStack {
       ).taskDefinition;
     };
 
-    // Sample placeholders
-    this.sampleSuccessTaskDefinition = createTaskDefinition(
-      'sample-success',
-      'SampleSuccess'
-    );
-
-    this.sampleFailureTaskDefinition = createTaskDefinition(
-      'sample-failure',
-      'SampleFailure'
-    );
-
     // Executor task definitions
     this.prepareTaskDefinition = createTaskDefinition('prepare', 'Prepare');
 

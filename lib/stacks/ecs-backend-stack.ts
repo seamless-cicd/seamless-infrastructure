@@ -1,26 +1,28 @@
 import { NestedStack, NestedStackProps, Fn } from 'aws-cdk-lib';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
+import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
-import { ElastiCacheStack } from './elasticache-stack';
-import { RdsStack } from './rds-stack';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
 config();
 
+// To be supplied by the user during setup
 import {
   AWS_ACCOUNT_ID,
   AWS_ACCESS_KEY,
   AWS_SECRET_ACCESS_KEY,
-  GITHUB_PAT,
-  GITHUB_REPO_URL,
+  GITHUB_CLIENT_SECRET,
 } from '../constants';
 
 export interface EcsBackendStackProps extends NestedStackProps {
   readonly vpc: IVpc;
-  readonly rdsStack: RdsStack;
-  readonly elastiCacheStack: ElastiCacheStack;
+  readonly rdsPassword: string;
+  readonly rdsHostname: string;
+  readonly rdsPort: number;
+  readonly elastiCacheEndpoint: string;
+  readonly elastiCachePort: string;
+  readonly backendImage: string;
 }
 
 export class EcsBackendStack extends NestedStack {
@@ -35,54 +37,62 @@ export class EcsBackendStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
-    this.cluster = new Cluster(this, 'BackendServiceCluster', {
+    if (!props?.rdsPassword) {
+      throw new Error('No RDS password provided');
+    }
+
+    if (!props?.rdsHostname) {
+      throw new Error('No RDS hostname provided');
+    }
+
+    if (!props?.elastiCacheEndpoint) {
+      throw new Error('No ElastiCache endpoint provided');
+    }
+
+    if (!props?.backendImage) {
+      throw new Error('No Docker image provided');
+    }
+
+    // Fargate cluster for Seamless backend server
+    this.cluster = new Cluster(this, 'SeamlessBackendCluster', {
       vpc: props.vpc,
-      clusterName: 'backend-service-cluster',
       containerInsights: true,
     });
 
-    const backendServiceImage = ContainerImage.fromRegistry(
-      'ejweiner/seamless-backend'
-    );
+    const backendServiceImage = ContainerImage.fromRegistry(props.backendImage);
 
     this.fargate = new ApplicationLoadBalancedFargateService(
       this,
-      'BackendServiceALBFargateService',
+      'BackendALBFargateService',
       {
         cluster: this.cluster,
         cpu: 256,
         memoryLimitMiB: 1024,
         desiredCount: 1,
-        publicLoadBalancer: true,
-        // TODO: Disable public IP, but allow outbound traffic for pulling image
-        // https://aws.amazon.com/premiumsupport/knowledge-center/ecs-fargate-pull-container-error/
-        assignPublicIp: true,
+        publicLoadBalancer: false,
+        assignPublicIp: false,
         circuitBreaker: {
           rollback: true,
+        },
+        taskSubnets: {
+          subnetType: SubnetType.PRIVATE_WITH_EGRESS,
         },
         taskImageOptions: {
           image: backendServiceImage,
           containerPort: 3000,
           environment: {
             BACKEND_PORT: '3000',
-            DATABASE_URL: `postgresql://postgres:${props.rdsStack.rdsCredentialsSecret
-              .secretValueFromJson('password')
-              .unsafeUnwrap()}@${
-              props.rdsStack.rdsInstance.instanceEndpoint.hostname
-            }:${
-              props.rdsStack.rdsInstance.instanceEndpoint.port
-            }/seamlessRds?schema=public`,
-            REDIS_HOST:
-              props.elastiCacheStack.elastiCacheCluster
-                .attrRedisEndpointAddress,
-            REDIS_PORT: '6379',
-            // AWS_STEP_FUNCTION_ARN: props.stateMachineArn,
-            // Supplied in env
+            // Database name "seamless_rds" is defined in RDS Stack
+            DATABASE_URL: `postgresql://postgres:${props.rdsPassword}@${
+              props.rdsHostname
+            }:${props.rdsPort || 5432}/seamless_rds?schema=public`,
+            REDIS_HOST: props.elastiCacheEndpoint,
+            REDIS_PORT: props.elastiCachePort || '6379',
+            // These environment variables are forwarded to the server
             AWS_ACCOUNT_ID,
             AWS_ACCESS_KEY,
             AWS_SECRET_ACCESS_KEY,
-            GITHUB_PAT,
-            GITHUB_REPO_URL,
+            GITHUB_CLIENT_SECRET,
           },
         },
       }

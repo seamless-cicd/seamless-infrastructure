@@ -4,6 +4,7 @@ import {
   CfnIntegration,
   CfnRoute,
   CfnStage,
+  CfnVpcLink,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
@@ -25,11 +26,16 @@ export class ApiGatewayStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
+    if (!props?.fargate) {
+      throw new Error('No Fargate Service provided');
+    }
+
     // CORS configuration
     const corsProperty: CfnApi.CorsProperty = {
       allowHeaders: ['*'],
       allowMethods: ['*'],
       allowOrigins: ['*'],
+      maxAge: 3600,
     };
 
     // Define HTTP API
@@ -39,17 +45,24 @@ export class ApiGatewayStack extends NestedStack {
       corsConfiguration: corsProperty,
     });
 
+    // VPC Link configuration
+    const vpcLink = new CfnVpcLink(this, 'SeamlessVpcLinkToFargate', {
+      name: 'SeamlessVpcLinkToFargate',
+      subnetIds: props.vpc.privateSubnets.map((subnet) => subnet.subnetId),
+    });
+
     // Target that connects the API gateway to Fargate
     const integration = new CfnIntegration(
       this,
-      'SeamlessHttpApiGatewayIntegration',
+      'SeamlessHttpApiGatewayPrivateFargateIntegration',
       {
+        description: 'API Integration with private AWS Fargate Service',
         apiId: this.httpApi.attrApiId,
-        description: 'API Integration with AWS Fargate Service',
-        integrationMethod: 'ANY', // GET, POST, or ANY
         integrationType: 'HTTP_PROXY',
-        integrationUri:
-          'http://' + props.fargate.listener.loadBalancer.loadBalancerDnsName,
+        connectionId: vpcLink.attrVpcLinkId,
+        connectionType: 'VPC_LINK',
+        integrationMethod: 'ANY', // GET, POST, or ANY
+        integrationUri: props.fargate.listener.listenerArn,
         payloadFormatVersion: '1.0',
       }
     );
@@ -68,11 +81,10 @@ export class ApiGatewayStack extends NestedStack {
     });
 
     // Supply the public URL of the API gateway
-    new CfnOutput(this, 'SeamlessAPIGatewayUrl', {
+    new CfnOutput(this, 'SeamlessApiGatewayUrl', {
       value: this.httpApi.attrApiEndpoint,
-      // value: 'hello',
       description: 'API Gateway URL to access public endpoints',
-      exportName: 'SeamlessAPIGatewayUrl',
+      exportName: 'SeamlessApiGatewayUrl',
     });
   }
 }

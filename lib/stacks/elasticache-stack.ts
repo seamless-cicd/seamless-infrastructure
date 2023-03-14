@@ -1,5 +1,11 @@
-import { NestedStack, NestedStackProps, CfnOutput } from 'aws-cdk-lib';
-import { IVpc, CfnSecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import {
+  NestedStack,
+  NestedStackProps,
+  CfnOutput,
+  Aspects,
+  Tag,
+} from 'aws-cdk-lib';
+import { IVpc, SecurityGroup, Peer, Port } from 'aws-cdk-lib/aws-ec2';
 import { CfnCacheCluster, CfnSubnetGroup } from 'aws-cdk-lib/aws-elasticache';
 import { Construct } from 'constructs';
 
@@ -9,7 +15,7 @@ export interface ElastiCacheStackProps extends NestedStackProps {
 
 export class ElastiCacheStack extends NestedStack {
   readonly elastiCacheCluster: CfnCacheCluster;
-  readonly elastiCacheSecurityGroup: CfnSecurityGroup;
+  readonly elastiCacheSecurityGroup: SecurityGroup;
   readonly elastiCacheSubnetGroup: CfnSubnetGroup;
 
   constructor(scope: Construct, id: string, props?: ElastiCacheStackProps) {
@@ -19,25 +25,36 @@ export class ElastiCacheStack extends NestedStack {
       throw new Error('VPC not found');
     }
 
-    // Create subnet group for cluster
+    // Create a private subnet group
     this.elastiCacheSubnetGroup = new CfnSubnetGroup(
       this,
       'SeamlessElastiCacheSubnetGroup',
       {
         description: 'Subnet group for ElastiCache cluster',
-        subnetIds: props.vpc.publicSubnets.map((subnet) => subnet.subnetId),
+        subnetIds: props.vpc.privateSubnets.map((subnet) => subnet.subnetId),
       }
     );
 
     // Create a new security group for the ElastiCache instance
     // Allow all inbound traffic from subnet group, and all outbound from cluster
-    this.elastiCacheSecurityGroup = new CfnSecurityGroup(
+    this.elastiCacheSecurityGroup = new SecurityGroup(
       this,
       'SeamlessElastiCacheSecurityGroup',
       {
-        vpcId: props.vpc.vpcId,
-        groupDescription: 'Security group for Seamless ElastiCache cluster',
+        vpc: props.vpc,
+        description: 'Security group for Seamless ElastiCache cluster',
       }
+    );
+
+    Aspects.of(this.elastiCacheSecurityGroup).add(
+      new Tag('Name', 'SeamlessElastiCache')
+    );
+
+    // Default Redis port
+    this.elastiCacheSecurityGroup.addIngressRule(
+      Peer.anyIpv4(),
+      Port.tcp(6379),
+      'Allow inbound traffic on 6379'
     );
 
     // ElastiCache instance
@@ -45,12 +62,12 @@ export class ElastiCacheStack extends NestedStack {
       this,
       'SeamlessElastiCacheCluster',
       {
-        clusterName: 'seamless-elasticache',
+        clusterName: 'SeamlessElastiCache',
         cacheNodeType: 'cache.t2.micro',
         engine: 'redis',
         numCacheNodes: 1,
         cacheSubnetGroupName: this.elastiCacheSubnetGroup.ref,
-        vpcSecurityGroupIds: [this.elastiCacheSecurityGroup.ref],
+        vpcSecurityGroupIds: [this.elastiCacheSecurityGroup.securityGroupId],
       }
     );
 

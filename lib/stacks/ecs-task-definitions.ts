@@ -64,7 +64,7 @@ const create = (
       streamPrefix: `seamless-logs-${stageName}`,
     }),
     environment: {
-      LOG_SUBSCRIBER_URL: Fn.importValue('SeamlessAPIGatewayUrl').toString(),
+      LOG_SUBSCRIBER_URL: Fn.importValue('SeamlessApiGatewayUrl').toString(),
     },
   });
 
