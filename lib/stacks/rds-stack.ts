@@ -1,4 +1,10 @@
-import { NestedStack, NestedStackProps, RemovalPolicy } from 'aws-cdk-lib';
+import {
+  NestedStack,
+  NestedStackProps,
+  RemovalPolicy,
+  Aspects,
+  Tag,
+} from 'aws-cdk-lib';
 import {
   IVpc,
   SecurityGroup,
@@ -44,6 +50,8 @@ export class RdsStack extends NestedStack {
       }
     );
 
+    Aspects.of(this.rdsSecurityGroup).add(new Tag('Name', 'SeamlessRds'));
+
     this.rdsSecurityGroup.addIngressRule(
       Peer.anyIpv4(),
       Port.tcp(5432),
@@ -55,7 +63,7 @@ export class RdsStack extends NestedStack {
       this,
       'SeamlessRdsCredentialsSecret',
       {
-        secretName: `seamlessRdsCredentialsSecret`,
+        secretName: `SeamlessRdsCredentialsSecret`,
         generateSecretString: {
           secretStringTemplate: JSON.stringify({
             username: 'postgres',
@@ -68,7 +76,7 @@ export class RdsStack extends NestedStack {
     );
 
     new StringParameter(this, 'RdsCredentialsSecretArn', {
-      parameterName: `rdsCredentialsSecretArn`,
+      parameterName: `RdsCredentialsSecretArn`,
       stringValue: this.rdsCredentialsSecret.secretArn,
     });
 
@@ -83,18 +91,17 @@ export class RdsStack extends NestedStack {
       ),
       vpc: props.vpc,
       vpcSubnets: {
-        subnetType: SubnetType.PUBLIC,
+        subnetType: SubnetType.PRIVATE_WITH_EGRESS,
       },
-      databaseName: 'seamlessRds',
+      databaseName: 'seamless_rds',
       securityGroups: [this.rdsSecurityGroup],
       credentials: Credentials.fromSecret(this.rdsCredentialsSecret),
       maxAllocatedStorage: 128,
-      deletionProtection: false,
+      deletionProtection: true,
       storageEncrypted: true,
       allowMajorVersionUpgrade: false,
       autoMinorVersionUpgrade: false,
       removalPolicy: RemovalPolicy.DESTROY,
-      publiclyAccessible: true,
     });
   }
 }

@@ -21,9 +21,10 @@ export class SnsStack extends NestedStack {
     }
 
     // Create an SNS topic
-    this.topic = new Topic(this, 'seamless-pipeline-topic');
+    this.topic = new Topic(this, 'SeamlessTopic');
 
     // Subscribe an HTTP endpoint to this topic
+    // Requires confirmation by the user
     const urlSubscription = new UrlSubscription(SNS_SUBSCRIBER_URL, {
       protocol: SubscriptionProtocol.HTTPS,
     });

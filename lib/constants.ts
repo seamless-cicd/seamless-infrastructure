@@ -7,8 +7,7 @@ const envSchema = z.object({
   AWS_ACCOUNT_ID: z.string(),
   AWS_ACCESS_KEY: z.string(),
   AWS_SECRET_ACCESS_KEY: z.string(),
-  GITHUB_PAT: z.string(),
-  GITHUB_REPO_URL: z.string().url(),
+  GITHUB_CLIENT_SECRET: z.string(),
   SNS_SUBSCRIBER_URL: z.string().url(),
 });
 
@@ -28,7 +27,6 @@ export const {
   AWS_ACCOUNT_ID,
   AWS_ACCESS_KEY,
   AWS_SECRET_ACCESS_KEY,
-  GITHUB_PAT,
-  GITHUB_REPO_URL,
+  GITHUB_CLIENT_SECRET,
   SNS_SUBSCRIBER_URL,
 } = parsedEnv.data;

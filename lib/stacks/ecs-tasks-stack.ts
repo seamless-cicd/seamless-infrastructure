@@ -29,12 +29,11 @@ import taskDefinitions from './ecs-task-definitions';
 export interface EcsTasksStackProps extends NestedStackProps {
   readonly vpc: IVpc;
   readonly efs: FileSystem;
+  readonly logSubscriberUrl: string;
 }
 
 export class EcsTasksStack extends NestedStack {
   readonly cluster: Cluster;
-  readonly sampleSuccessTaskDefinition: Ec2TaskDefinition;
-  readonly sampleFailureTaskDefinition: Ec2TaskDefinition;
   readonly prepareTaskDefinition: Ec2TaskDefinition;
   readonly codeQualityTaskDefinition: Ec2TaskDefinition;
   readonly unitTestTaskDefinition: Ec2TaskDefinition;
@@ -51,51 +50,59 @@ export class EcsTasksStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
+    if (!props?.efs) {
+      throw new Error('No EFS provided');
+    }
+
     // Autoscaling group for ECS instances
-    const autoScalingGroup = new AutoScalingGroup(this, 'AutoScalingGroup', {
-      vpc: props.vpc,
-      // TODO: Switch to private subnet
-      associatePublicIpAddress: true,
-      vpcSubnets: {
-        subnetType: SubnetType.PUBLIC,
-      },
-      machineImage: EcsOptimizedImage.amazonLinux2(),
-      instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
-      userData: UserData.forLinux(),
-      // Grant ec2 instances communication access to ECS cluster
-      role: new Role(this, 'Ec2AccessRole', {
-        assumedBy: new ServicePrincipal('ec2.amazonaws.com'),
-      }),
-      minCapacity: 1,
-      desiredCapacity: 1,
-      maxCapacity: 10,
-    });
+    const autoScalingGroup = new AutoScalingGroup(
+      this,
+      'SeamlessAutoScalingGroup',
+      {
+        vpc: props.vpc,
+        allowAllOutbound: true,
+        associatePublicIpAddress: false,
+        vpcSubnets: {
+          subnetType: SubnetType.PRIVATE_WITH_EGRESS,
+        },
+        machineImage: EcsOptimizedImage.amazonLinux2(),
+        instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
+        userData: UserData.forLinux(),
+        // Grant EC2 instances access to ECS cluster
+        role: new Role(this, 'Ec2AccessRole', {
+          assumedBy: new ServicePrincipal('ec2.amazonaws.com'),
+        }),
+        minCapacity: 1,
+        desiredCapacity: 1,
+        maxCapacity: 10,
+      }
+    );
 
     // ECS cluster for executing tasks
-    this.cluster = new Cluster(this, 'ExecutorCluster', {
-      vpc: props?.vpc,
-      clusterName: 'executor-cluster',
+    this.cluster = new Cluster(this, 'SeamlessExecutorCluster', {
+      vpc: props.vpc,
+      clusterName: 'SeamlessExecutorCluster',
       containerInsights: true,
     });
 
     // Register auto-scaling group as capacity provider for cluster
     const capacityProvider = new AsgCapacityProvider(
       this,
-      'AsgCapacityProvider',
+      'SeamlessAsgCapacityProvider',
       { autoScalingGroup }
     );
 
     this.cluster.addAsgCapacityProvider(capacityProvider);
 
-    // Permissions
+    // Allow executor containers access to the resources they need
     const taskDefinitionPolicyDocument = new PolicyDocument({
       statements: [
         new PolicyStatement({
           effect: Effect.ALLOW,
           actions: [
-            'ecr:*',
             'ec2:*',
             'ecs:*',
+            'ecr:*',
             'efs:*',
             'elasticloadbalancing:*',
           ],
@@ -111,12 +118,13 @@ export class EcsTasksStack extends NestedStack {
       },
     });
 
+    // Some executors need access to a shared Docker volume on EFS
     const efsDnsName = `${props.efs.fileSystemId}.efs.${this.region}.amazonaws.com`;
 
-    // Sample task definitions. Deploy stages don't need EFS.
+    // Generator for task definitions
     const createTaskDefinition = (
-      stageName: string,
-      taskDefinitionId: string,
+      stageName: string, // kebab-cased name
+      taskDefinitionId: string, // PascalCased name
       useEfs = true
     ) => {
       return taskDefinitions.create(
@@ -124,20 +132,10 @@ export class EcsTasksStack extends NestedStack {
         stageName,
         taskDefinitionId,
         useEfs ? efsDnsName : '',
+        props.logSubscriberUrl,
         taskRole
       ).taskDefinition;
     };
-
-    // Sample placeholders
-    this.sampleSuccessTaskDefinition = createTaskDefinition(
-      'sample-success',
-      'SampleSuccess'
-    );
-
-    this.sampleFailureTaskDefinition = createTaskDefinition(
-      'sample-failure',
-      'SampleFailure'
-    );
 
     // Executor task definitions
     this.prepareTaskDefinition = createTaskDefinition('prepare', 'Prepare');
@@ -149,9 +147,11 @@ export class EcsTasksStack extends NestedStack {
 
     this.unitTestTaskDefinition = createTaskDefinition('unit-test', 'UnitTest');
 
+    // Build executor requires customization
     this.buildTaskDefinition = taskDefinitions.createBuildTaskDefinition(
       this,
       efsDnsName,
+      props.logSubscriberUrl,
       taskRole
     );
 
