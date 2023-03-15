@@ -15,8 +15,13 @@ const {
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
+// Logger wrapper that sends along stage ID
+const log = async (message: string) => {
+  await logger.emit(message, 'stdout', { stageId: STAGE_ID });
+};
+
 async function deployProd(): Promise<void> {
-  await logger.emit(`Deploy to Prod stage starting; stage ID: ${STAGE_ID}`);
+  await log(`Deploy to Prod stage starting; stage ID: ${STAGE_ID}`);
 
   const ecs = new ECSClient({ region: AWS_REGION });
 
@@ -31,7 +36,7 @@ async function deployProd(): Promise<void> {
       forceNewDeployment: true,
     });
 
-    await logger.emit(
+    await log(
       `Issuing deploy command:\n${JSON.stringify(
         updateServiceCommand,
         null,
@@ -39,13 +44,14 @@ async function deployProd(): Promise<void> {
       )}`,
     );
     const response = await ecs.send(updateServiceCommand);
-    await logger.emit(
+    await log(
       `Service update successful:\n${JSON.stringify(response, null, 2)}`,
     );
   } catch (error) {
     await logger.emit(
       `Error updating service:\n${JSON.stringify(error, null, 2)}`,
-      { type: 'stderr' },
+      'stderr',
+      { stageId: STAGE_ID },
     );
   }
 }

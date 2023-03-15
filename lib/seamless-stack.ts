@@ -8,6 +8,8 @@ import { RdsStack } from './stacks/rds-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
 import { EcsBackendStack } from './stacks/ecs-backend-stack';
 import { ApiGatewayStack } from './stacks/api-gateway-stack';
+import { Ec2BastionHostStack } from './stacks/ec2-bastion-host-stack';
+import { DemoFargateStack } from './stacks/demo-fargate-stack';
 import { Construct } from 'constructs';
 
 export class SeamlessStack extends Stack {
@@ -16,6 +18,16 @@ export class SeamlessStack extends Stack {
 
     // VPC
     const vpcStack = new VpcStack(this, 'SeamlessVpc');
+
+    // EC2 bastion host
+    const ec2BastionHostStack = new Ec2BastionHostStack(
+      this,
+      'SeamlessEc2BastionHost',
+      {
+        vpc: vpcStack.vpc,
+      }
+    );
+    ec2BastionHostStack.addDependency(vpcStack);
 
     // EFS
     const efsStack = new EfsStack(this, 'SeamlessEfs', { vpc: vpcStack.vpc });
@@ -31,8 +43,20 @@ export class SeamlessStack extends Stack {
     const elastiCacheStack = new ElastiCacheStack(this, 'SeamlessElastiCache', {
       vpc: vpcStack.vpc,
     });
-
     elastiCacheStack.addDependency(vpcStack);
+
+    // Demo Fargate Microservices Stack
+    const DEMO_IMAGE = 'jasonherngwang/seamless-demo-notification'; // Basic Express app
+
+    const demoFargateStack = new DemoFargateStack(
+      this,
+      'SeamlessDemoFargateStack',
+      {
+        vpc: vpcStack.vpc,
+        demoImage: DEMO_IMAGE,
+      }
+    );
+    demoFargateStack.addDependency(vpcStack);
 
     // Seamless backend stack
     // Docker image is publicly hosted on DockerHub
@@ -55,6 +79,7 @@ export class SeamlessStack extends Stack {
     ecsBackendStack.addDependency(rdsStack);
     ecsBackendStack.addDependency(elastiCacheStack);
 
+    // API Gateway
     const apiGatewayStack = new ApiGatewayStack(this, 'SeamlessApiGateway', {
       vpc: vpcStack.vpc,
       fargate: ecsBackendStack.fargate,

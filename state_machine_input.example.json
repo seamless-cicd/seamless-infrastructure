@@ -41,24 +41,26 @@
       }
     }
   },
-  "runFull": "true",
-  "useStaging": "false",
-  "autoDeploy": "false",
+  "runFull": true,
+  "useStaging": false,
+  "autoDeploy": true,
   "containerVariables": {
     "awsRegion": "us-east-1",
     "awsAccountId": "01234567912",
     "awsAccessKey": "012345679ABC",
     "awsSecretAccessKey": "012345679ABC",
+    "githubClientId": "abc123",
+    "githubClientSecret": "abc123",
     "githubPat": "ghp_012345679abc",
-    "githubRepoUrl": "https://github.com/user-org/repo-name",
+    "githubRepoUrl": "https://github.com/seamless-cicd/seamless-demo-notification",
     "codeQualityCommand": "npm run lint",
     "unitTestCommand": "npm run test",
     "dockerfilePath": ".",
-    "awsEcsClusterStaging": "my-staging-ecs-cluster-name",
-    "awsEcsServiceStaging": "my-staging-ecs-service-name",
-    "awsEcsCluster": "my-ecs-cluster-name",
-    "awsEcsService": "my-ecs-service-name",
-    "awsEcrRepo": "my-ecr-repo-name",
-    "logSubscriberUrl": "https://abc123.m.pipedream.net"
+    "awsEcsClusterStaging": "seamless-demo-cluster",
+    "awsEcsServiceStaging": "seamless-demo-notification",
+    "awsEcsCluster": "seamless-demo-cluster",
+    "awsEcsService": "seamless-demo-notification",
+    "awsEcrRepo": "seamless-demo-notification",
+    "logSubscriberUrl": "https://abc123.execute-api.us-east-1.amazonaws.com/api/logs"
   }
 }

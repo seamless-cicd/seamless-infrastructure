@@ -25,6 +25,7 @@
       "./node_modules/@types"
     ]
   },
+  "include": ["./lib/stacks","./bin"],
   "exclude": [
     "node_modules",
     "cdk.out"

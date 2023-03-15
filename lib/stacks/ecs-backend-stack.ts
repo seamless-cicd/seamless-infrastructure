@@ -12,7 +12,9 @@ import {
   AWS_ACCOUNT_ID,
   AWS_ACCESS_KEY,
   AWS_SECRET_ACCESS_KEY,
+  GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
+  GITHUB_PAT,
 } from '../constants';
 
 export interface EcsBackendStackProps extends NestedStackProps {
@@ -92,7 +94,9 @@ export class EcsBackendStack extends NestedStack {
             AWS_ACCOUNT_ID,
             AWS_ACCESS_KEY,
             AWS_SECRET_ACCESS_KEY,
+            GITHUB_CLIENT_ID,
             GITHUB_CLIENT_SECRET,
+            GITHUB_PAT,
           },
         },
       }

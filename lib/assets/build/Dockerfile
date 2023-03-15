@@ -22,5 +22,5 @@ COPY tsconfig.json ./
 
 RUN npm run build
 
-ENTRYPOINT ["/usr/bin/tini", "--"]
+ENTRYPOINT ["/sbin/tini", "--"]
 CMD ["node", "./dist/index.js"]
