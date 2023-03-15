@@ -53,7 +53,7 @@ async function cloneRepo(): Promise<void> {
       process.exit(1);
     }
   } catch (error) {
-    await handleProcessError(error, LOG_SUBSCRIBER_URL);
+    await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 
   // Install dependencies
@@ -77,7 +77,7 @@ async function cloneRepo(): Promise<void> {
       process.exit(1);
     }
   } catch (error) {
-    await handleProcessError(error, LOG_SUBSCRIBER_URL);
+    await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 }
 

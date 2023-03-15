@@ -11,6 +11,7 @@ const envSchema = z.object({
   GITHUB_CLIENT_SECRET: z.string(),
   GITHUB_PAT: z.string(),
   SNS_SUBSCRIBER_URL: z.string().url(),
+  DEMO_NOTIFICATION_ENDPOINT: z.string().optional(),
 });
 
 export type EnvVars = z.infer<typeof envSchema>;
@@ -33,4 +34,5 @@ export const {
   GITHUB_CLIENT_SECRET,
   GITHUB_PAT,
   SNS_SUBSCRIBER_URL,
+  DEMO_NOTIFICATION_ENDPOINT,
 } = parsedEnv.data;

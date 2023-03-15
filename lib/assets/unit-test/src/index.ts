@@ -46,7 +46,7 @@ async function runUnitTests(): Promise<void> {
       await log('Unit test check failed');
     }
   } catch (error) {
-    await handleProcessError(error, LOG_SUBSCRIBER_URL);
+    await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 }
 

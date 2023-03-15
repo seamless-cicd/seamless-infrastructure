@@ -11,7 +11,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-ecs": "^3.276.0",
-    "@seamless-cicd/execa-logged-process": "^0.0.5",
+    "@seamless-cicd/execa-logged-process": "^0.0.7",
     "dotenv": "^16.0.3",
     "execa": "^7.1.0",
     "fs-extra": "^11.1.0",

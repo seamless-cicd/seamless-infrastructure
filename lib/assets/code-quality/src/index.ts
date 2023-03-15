@@ -46,7 +46,7 @@ async function checkCodeQuality(): Promise<void> {
       await log('Code quality check failed');
     }
   } catch (error) {
-    await handleProcessError(error, LOG_SUBSCRIBER_URL);
+    await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 }
 

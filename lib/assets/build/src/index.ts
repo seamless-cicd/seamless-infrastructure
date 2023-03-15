@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import * as fs from 'fs';
+import fs from 'fs-extra';
 import path from 'path';
 import { execaCommand } from 'execa';
 import {
@@ -29,16 +29,18 @@ const DIR_TO_CLONE_INTO = '/data/app';
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
+const log = async (message: string) => {
+  await logger.emit(message, 'stdout', { stageId: STAGE_ID });
+};
+
 const ecrClient = new ECRClient({ region: AWS_REGION });
 
 async function buildAndPushImage(): Promise<void> {
-  await logger.emit(`Build and push stage starting; stage ID: ${STAGE_ID}`);
+  await log(`Build and push stage starting; stage ID: ${STAGE_ID}`);
 
   // Verify that source code was cloned
   if (!fs.existsSync(DIR_TO_CLONE_INTO)) {
-    await logger.emit(
-      `Source code hasn't been cloned into ${DIR_TO_CLONE_INTO}`,
-    );
+    await log(`Source code hasn't been cloned into ${DIR_TO_CLONE_INTO}`);
     process.exit(1);
   }
 
@@ -49,13 +51,13 @@ async function buildAndPushImage(): Promise<void> {
     'Dockerfile',
   );
   if (!fs.existsSync(pathToDockerfile)) {
-    await logger.emit(`Dockerfile not found at ${pathToDockerfile}`);
+    await log(`Dockerfile not found at ${pathToDockerfile}`);
     process.exit(1);
   }
 
   // Build Docker image
   try {
-    await logger.emit(`Building Docker image`);
+    await log(`Building Docker image`);
 
     const buildProcess = await createLoggedProcess(
       'docker',
@@ -67,21 +69,22 @@ async function buildAndPushImage(): Promise<void> {
       ],
       {},
       LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
     );
 
     if (buildProcess.exitCode === 0) {
-      await logger.emit('Build succeeded');
+      await log('Build succeeded');
     } else {
-      await logger.emit('Build failed');
+      await log('Build failed');
       process.exit(1);
     }
   } catch (error) {
-    await handleProcessError(error, LOG_SUBSCRIBER_URL);
+    await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 
   // Login to AWS
   try {
-    await logger.emit(`Logging into AWS ECR`);
+    await log(`Logging into AWS ECR`);
     const command = new GetAuthorizationTokenCommand({});
     const response = await ecrClient.send(command);
 
@@ -106,30 +109,31 @@ async function buildAndPushImage(): Promise<void> {
         stdin: 'pipe',
       },
       LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
     );
 
     if (loginAwsProcess.exitCode === 0) {
-      await logger.emit('Login succeeded');
+      await log('Login succeeded');
     } else {
-      await logger.emit('Login failed');
+      await log('Login failed');
       process.exit(1);
     }
   } catch (error) {
-    await handleProcessError(error, LOG_SUBSCRIBER_URL);
+    await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 
   // Check if ECR repository exists
   try {
-    await logger.emit(`Checking if ${AWS_ECR_REPO} exists in ECR`);
+    await log(`Checking if ${AWS_ECR_REPO} exists in ECR`);
     const describeCommand = new DescribeRepositoriesCommand({
       repositoryNames: [AWS_ECR_REPO],
     });
 
     await ecrClient.send(describeCommand);
-    await logger.emit(`It exists in ECR`);
+    await log(`It exists in ECR`);
   } catch (error) {
     if (error.name === 'RepositoryNotFoundException') {
-      await logger.emit(`${AWS_ECR_REPO} does not exist in ECR; creating now`);
+      await log(`${AWS_ECR_REPO} does not exist in ECR; creating now`);
       const createCommand = new CreateRepositoryCommand({
         repositoryName: AWS_ECR_REPO,
       });
@@ -147,7 +151,7 @@ async function buildAndPushImage(): Promise<void> {
   await execaCommand(`docker tag ${AWS_ECR_REPO}:latest ${fullEcrTag}`);
 
   // Push image
-  await logger.emit(`Pushing image ${AWS_ECR_REPO} to ECR`);
+  await log(`Pushing image ${AWS_ECR_REPO} to ECR`);
 
   try {
     const pushToEcrProcess = await createLoggedProcess(
@@ -155,16 +159,17 @@ async function buildAndPushImage(): Promise<void> {
       ['push', fullEcrTag],
       {},
       LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
     );
 
     if (pushToEcrProcess.exitCode === 0) {
-      await logger.emit('Push succeeded');
+      await log('Push succeeded');
     } else {
-      await logger.emit('Push failed');
+      await log('Push failed');
       process.exit(1);
     }
   } catch (error) {
-    await handleProcessError(error, LOG_SUBSCRIBER_URL);
+    await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 }
 

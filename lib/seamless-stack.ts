@@ -45,6 +45,19 @@ export class SeamlessStack extends Stack {
     });
     elastiCacheStack.addDependency(vpcStack);
 
+    // Demo Fargate Microservices Stack
+    const DEMO_IMAGE = 'jasonherngwang/seamless-demo-notification'; // Basic Express app
+
+    const demoFargateStack = new DemoFargateStack(
+      this,
+      'SeamlessDemoFargateStack',
+      {
+        vpc: vpcStack.vpc,
+        demoImage: DEMO_IMAGE,
+      }
+    );
+    demoFargateStack.addDependency(vpcStack);
+
     // Seamless backend stack
     // Docker image is publicly hosted on DockerHub
     const BACKEND_IMAGE = 'ejweiner/seamless-backend';
@@ -65,18 +78,6 @@ export class SeamlessStack extends Stack {
     // Backend requires endpoints to create connection strings for RDS and Elasticache
     ecsBackendStack.addDependency(rdsStack);
     ecsBackendStack.addDependency(elastiCacheStack);
-
-    // Demo Fargate Microservices Stack
-    // const DEMO_IMAGE = ''; // TBD
-
-    // const demoFargateStack = new DemoFargateStack(
-    //   this,
-    //   'SeamlessDemoFargateStack',
-    //   {
-    //     vpc: vpcStack.vpc,
-    //     demoImage: DEMO_IMAGE,
-    //   }
-    // );
 
     // API Gateway
     const apiGatewayStack = new ApiGatewayStack(this, 'SeamlessApiGateway', {
