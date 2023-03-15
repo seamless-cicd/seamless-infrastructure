@@ -24,6 +24,7 @@ const {
   STAGE_ID,
   DOCKERFILE_PATH,
   LOG_SUBSCRIBER_URL,
+  COMMIT_HASH,
 } = process.env;
 const DIR_TO_CLONE_INTO = '/data/app';
 
@@ -64,7 +65,7 @@ async function buildAndPushImage(): Promise<void> {
       [
         'build',
         '-t',
-        AWS_ECR_REPO,
+        `${AWS_ECR_REPO}:${COMMIT_HASH}`,
         path.join(DIR_TO_CLONE_INTO, DOCKERFILE_PATH),
       ],
       {},
@@ -147,8 +148,8 @@ async function buildAndPushImage(): Promise<void> {
   }
 
   // Tag image
-  const fullEcrTag = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${AWS_ECR_REPO}:latest`;
-  await execaCommand(`docker tag ${AWS_ECR_REPO}:latest ${fullEcrTag}`);
+  const fullEcrTag = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${AWS_ECR_REPO}:${COMMIT_HASH}`;
+  await execaCommand(`docker tag ${AWS_ECR_REPO}:${COMMIT_HASH} ${fullEcrTag}`);
 
   // Push image
   await log(`Pushing image ${AWS_ECR_REPO} to ECR`);
