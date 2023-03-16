@@ -288,6 +288,10 @@ export class StateMachineStack extends NestedStack {
                 value: JsonPath.stringAt('$.containerVariables.githubRepoUrl'),
               },
               {
+                name: 'COMMIT_HASH',
+                value: JsonPath.stringAt('$.containerVariables.commitHash'),
+              },
+              {
                 name: 'CODE_QUALITY_COMMAND',
                 value: JsonPath.stringAt(
                   '$.containerVariables.codeQualityCommand'
@@ -326,12 +330,6 @@ export class StateMachineStack extends NestedStack {
               {
                 name: 'AWS_ECR_REPO',
                 value: JsonPath.stringAt('$.containerVariables.awsEcrRepo'),
-              },
-              {
-                name: 'LOG_SUBSCRIBER_URL',
-                value: JsonPath.stringAt(
-                  '$.containerVariables.logSubscriberUrl'
-                ),
               },
             ],
           },

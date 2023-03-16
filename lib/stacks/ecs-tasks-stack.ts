@@ -1,27 +1,27 @@
 import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
+import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import {
-  IVpc,
-  InstanceType,
   InstanceClass,
   InstanceSize,
-  UserData,
+  InstanceType,
+  IVpc,
   SubnetType,
+  UserData,
 } from 'aws-cdk-lib/aws-ec2';
 import {
-  Cluster,
-  EcsOptimizedImage,
   AsgCapacityProvider,
+  Cluster,
   Ec2TaskDefinition,
+  EcsOptimizedImage,
 } from 'aws-cdk-lib/aws-ecs';
 import { FileSystem } from 'aws-cdk-lib/aws-efs';
 import {
-  Role,
-  ServicePrincipal,
+  Effect,
   PolicyDocument,
   PolicyStatement,
-  Effect,
+  Role,
+  ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
-import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import { Construct } from 'constructs';
 
 import taskDefinitions from './ecs-task-definitions';
@@ -106,6 +106,11 @@ export class EcsTasksStack extends NestedStack {
             'efs:*',
             'elasticloadbalancing:*',
           ],
+          resources: ['*'],
+        }),
+        new PolicyStatement({
+          effect: Effect.ALLOW,
+          actions: ['iam:PassRole'],
           resources: ['*'],
         }),
       ],

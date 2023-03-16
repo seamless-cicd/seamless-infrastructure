@@ -10,6 +10,7 @@
     "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
+    "@aws-sdk/client-ecr": "^3.292.0",
     "@aws-sdk/client-ecs": "^3.276.0",
     "@seamless-cicd/execa-logged-process": "^0.0.7",
     "dotenv": "^16.0.3",

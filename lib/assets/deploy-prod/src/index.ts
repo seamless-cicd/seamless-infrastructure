@@ -1,8 +1,8 @@
 import dotenv from 'dotenv';
 dotenv.config();
 
-import { ECSClient, UpdateServiceCommand } from '@aws-sdk/client-ecs';
 import { LogEmitter } from '@seamless-cicd/execa-logged-process';
+import ecsService from './ecs.js';
 
 const {
   AWS_REGION,
@@ -11,6 +11,7 @@ const {
   AWS_ECS_SERVICE,
   STAGE_ID,
   LOG_SUBSCRIBER_URL,
+  COMMIT_HASH,
 } = process.env;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
@@ -21,31 +22,53 @@ const log = async (message: string) => {
 };
 
 async function deployProd(): Promise<void> {
-  await log(`Deploy to Prod stage starting; stage ID: ${STAGE_ID}`);
-
-  const ecs = new ECSClient({ region: AWS_REGION });
-
-  const serviceArn = `arn:aws:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:service/${AWS_ECS_SERVICE}`;
-  const clusterArn = `arn:aws:ecs:${AWS_REGION}:${AWS_ACCOUNT_ID}:cluster/${AWS_ECS_CLUSTER}`;
-
   try {
-    // Restart the Fargate service without changing its Task Definition
-    const updateServiceCommand = new UpdateServiceCommand({
-      service: serviceArn,
-      cluster: clusterArn,
-      forceNewDeployment: true,
-    });
+    await log(`Deploy to Prod stage starting; stage ID: ${STAGE_ID}`);
+
+    const ecsClient = ecsService.createEcsClient(AWS_REGION);
+
+    // Find Task Definition currently used by Service
+    const taskDefinition = await ecsService.findTaskDefinitionForService(
+      ecsClient,
+      AWS_ECS_SERVICE,
+      AWS_ECS_CLUSTER,
+    );
 
     await log(
-      `Issuing deploy command:\n${JSON.stringify(
-        updateServiceCommand,
-        null,
-        2,
-      )}`,
+      `Current Task Definition: ${JSON.stringify(taskDefinition, null, 2)}`,
     );
-    const response = await ecs.send(updateServiceCommand);
+
+    // Update with new tag (git commit hash)
+    const newTaskDefinition =
+      await ecsService.updateTaskDefinitionWithNewImageTag(
+        AWS_ACCOUNT_ID,
+        AWS_REGION,
+        taskDefinition,
+        COMMIT_HASH,
+      );
+
     await log(
-      `Service update successful:\n${JSON.stringify(response, null, 2)}`,
+      `New Task Definition: ${JSON.stringify(newTaskDefinition, null, 2)}`,
+    );
+
+    // Register new Task Definition on ECR
+    const registeredTaskDefinition = await ecsService.registerTaskDefinition(
+      ecsClient,
+      newTaskDefinition,
+    );
+
+    await log(`Registered new Task Definition`);
+
+    // Update the ECS Service
+    const response = await ecsService.updateServiceWithNewTaskDefinition(
+      ecsClient,
+      AWS_ECS_SERVICE,
+      AWS_ECS_CLUSTER,
+      registeredTaskDefinition,
+    );
+
+    await log(
+      `Service update initiated:\n${JSON.stringify(response, null, 2)}`,
     );
   } catch (error) {
     await logger.emit(
@@ -53,6 +76,7 @@ async function deployProd(): Promise<void> {
       'stderr',
       { stageId: STAGE_ID },
     );
+    process.exit(1);
   }
 }
 
