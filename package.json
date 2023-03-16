@@ -2,7 +2,7 @@
   "name": "seamless",
   "version": "0.1.0",
   "bin": {
-    "seamless": "bin/seamless.js"
+    "seamless": "CLI/cli.ts"
   },
   "scripts": {
     "build": "tsc",
