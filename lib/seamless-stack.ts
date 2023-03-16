@@ -1,16 +1,16 @@
-import { Stack, StackProps, CfnOutput, Fn } from 'aws-cdk-lib';
-import { VpcStack } from './stacks/vpc-stack';
-import { EfsStack } from './stacks/efs-stack';
-import { SnsStack } from './stacks/sns-stack';
-import { EcsTasksStack } from './stacks/ecs-tasks-stack';
-import { StateMachineStack } from './stacks/state-machine-stack';
-import { RdsStack } from './stacks/rds-stack';
-import { ElastiCacheStack } from './stacks/elasticache-stack';
-import { EcsBackendStack } from './stacks/ecs-backend-stack';
-import { ApiGatewayStack } from './stacks/api-gateway-stack';
-import { Ec2BastionHostStack } from './stacks/ec2-bastion-host-stack';
-import { DemoFargateStack } from './stacks/demo-fargate-stack';
+import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
+import { ApiGatewayStack } from './stacks/api-gateway-stack';
+import { DemoFargateStack } from './stacks/demo-fargate-stack';
+import { Ec2BastionHostStack } from './stacks/ec2-bastion-host-stack';
+import { EcsBackendStack } from './stacks/ecs-backend-stack';
+import { EcsTasksStack } from './stacks/ecs-tasks-stack';
+import { EfsStack } from './stacks/efs-stack';
+import { ElastiCacheStack } from './stacks/elasticache-stack';
+import { RdsStack } from './stacks/rds-stack';
+import { SnsStack } from './stacks/sns-stack';
+import { StateMachineStack } from './stacks/state-machine-stack';
+import { VpcStack } from './stacks/vpc-stack';
 
 export class SeamlessStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps) {
@@ -84,14 +84,15 @@ export class SeamlessStack extends Stack {
       vpc: vpcStack.vpc,
       fargate: ecsBackendStack.fargate,
     });
+    // API Gateway needs to know the Backend's ALB Fargate listener ARN
     apiGatewayStack.addDependency(ecsBackendStack);
 
     // ECS
     const ecsTasksStack = new EcsTasksStack(this, 'SeamlessEcs', {
       vpc: vpcStack.vpc,
       efs: efsStack.efs,
-      // API Gateway endpoint to send container logs to
-      logSubscriberUrl: apiGatewayStack.httpApi.attrApiEndpoint,
+      // API Gateway URL to send container logs
+      logSubscriberUrl: `${apiGatewayStack.httpApi.attrApiEndpoint}/api/logs`,
     });
     // ECS executors need the API Gateway URL so they can send logs
     ecsTasksStack.addDependency(apiGatewayStack);

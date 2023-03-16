@@ -10,7 +10,6 @@ import {
   DescribeRepositoriesCommand,
   CreateRepositoryCommand,
 } from '@aws-sdk/client-ecr';
-
 import {
   LogEmitter,
   createLoggedProcess,
@@ -18,9 +17,9 @@ import {
 } from '@seamless-cicd/execa-logged-process';
 
 const {
-  AWS_ECR_REPO,
-  AWS_REGION,
   AWS_ACCOUNT_ID,
+  AWS_REGION,
+  AWS_ECR_REPO,
   STAGE_ID,
   DOCKERFILE_PATH,
   LOG_SUBSCRIBER_URL,
@@ -66,6 +65,8 @@ async function buildAndPushImage(): Promise<void> {
         'build',
         '-t',
         `${AWS_ECR_REPO}:${COMMIT_HASH}`,
+        '-t',
+        `${AWS_ECR_REPO}:latest`,
         path.join(DIR_TO_CLONE_INTO, DOCKERFILE_PATH),
       ],
       {},
@@ -83,7 +84,7 @@ async function buildAndPushImage(): Promise<void> {
     await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 
-  // Login to AWS
+  // Login to ECR
   try {
     await log(`Logging into AWS ECR`);
     const command = new GetAuthorizationTokenCommand({});
@@ -130,6 +131,7 @@ async function buildAndPushImage(): Promise<void> {
       repositoryNames: [AWS_ECR_REPO],
     });
 
+    // This throws an error if the repo doesn't exist
     await ecrClient.send(describeCommand);
     await log(`It exists in ECR`);
   } catch (error) {
@@ -142,19 +144,33 @@ async function buildAndPushImage(): Promise<void> {
       await ecrClient.send(createCommand);
       console.log(`ECR repository ${AWS_ECR_REPO} created`);
     } else {
-      console.error(`Error checking for ECR repository ${AWS_ECR_REPO}`);
+      await logger.emit(
+        `Error checking for ECR repository ${AWS_ECR_REPO}`,
+        'stderr',
+        { stageId: STAGE_ID },
+      );
       process.exit(1);
     }
   }
 
   // Tag image
   const fullEcrTag = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${AWS_ECR_REPO}:${COMMIT_HASH}`;
-  await execaCommand(`docker tag ${AWS_ECR_REPO}:${COMMIT_HASH} ${fullEcrTag}`);
-
-  // Push image
-  await log(`Pushing image ${AWS_ECR_REPO} to ECR`);
 
   try {
+    await execaCommand(
+      `docker tag ${AWS_ECR_REPO}:${COMMIT_HASH} ${fullEcrTag}`,
+    );
+  } catch (error) {
+    await logger.emit(`Error tagging image ${fullEcrTag}`, 'stderr', {
+      stageId: STAGE_ID,
+    });
+    process.exit(1);
+  }
+
+  // Push image
+  try {
+    await log(`Pushing image ${AWS_ECR_REPO} to ECR`);
+
     const pushToEcrProcess = await createLoggedProcess(
       'docker',
       ['push', fullEcrTag],
@@ -166,7 +182,9 @@ async function buildAndPushImage(): Promise<void> {
     if (pushToEcrProcess.exitCode === 0) {
       await log('Push succeeded');
     } else {
-      await log('Push failed');
+      await logger.emit('Push failed', 'stderr', {
+        stageId: STAGE_ID,
+      });
       process.exit(1);
     }
   } catch (error) {
