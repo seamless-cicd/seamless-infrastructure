@@ -1,40 +1,40 @@
 import {
+  CfnOutput,
+  Duration,
   NestedStack,
   NestedStackProps,
-  Duration,
   Stack,
-  CfnOutput,
 } from 'aws-cdk-lib';
 import {
-  StateMachine,
-  Pass,
-  Fail,
-  Succeed,
-  TaskInput,
-  IntegrationPattern,
-  JsonPath,
-  Result,
-  Choice,
-  Condition,
-} from 'aws-cdk-lib/aws-stepfunctions';
+  Cluster,
+  ContainerDefinition,
+  Ec2TaskDefinition,
+  PlacementStrategy,
+} from 'aws-cdk-lib/aws-ecs';
 import { Topic } from 'aws-cdk-lib/aws-sns';
 import {
-  Cluster,
-  PlacementStrategy,
-  Ec2TaskDefinition,
-} from 'aws-cdk-lib/aws-ecs';
+  Choice,
+  Condition,
+  Fail,
+  IntegrationPattern,
+  JsonPath,
+  Pass,
+  Result,
+  StateMachine,
+  Succeed,
+  TaskInput,
+} from 'aws-cdk-lib/aws-stepfunctions';
 import {
-  SnsPublish,
-  EcsRunTask,
-  EcsEc2LaunchTarget,
   CallApiGatewayHttpApiEndpoint,
+  EcsEc2LaunchTarget,
+  EcsRunTask,
   HttpMethod,
+  SnsPublish,
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
-import { ContainerDefinition } from 'aws-cdk-lib/aws-ecs';
 import { Construct } from 'constructs';
 
-import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { CfnApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { randomUUID } from 'crypto';
 
 import { config } from 'dotenv';
@@ -258,16 +258,6 @@ export class StateMachineStack extends NestedStack {
               {
                 name: 'AWS_ACCOUNT_ID',
                 value: JsonPath.stringAt('$.containerVariables.awsAccountId'),
-              },
-              {
-                name: 'AWS_ACCESS_KEY',
-                value: JsonPath.stringAt('$.containerVariables.awsAccessKey'),
-              },
-              {
-                name: 'AWS_SECRET_ACCESS_KEY',
-                value: JsonPath.stringAt(
-                  '$.containerVariables.awsSecretAccessKey'
-                ),
               },
               // {
               //   name: 'GITHUB_CLIENT_ID',

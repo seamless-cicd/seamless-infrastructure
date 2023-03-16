@@ -1,5 +1,6 @@
-import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
-import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
+import { Duration, NestedStack, NestedStackProps } from 'aws-cdk-lib';
+import { AdjustmentType, AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
+import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import {
   InstanceClass,
   InstanceSize,
@@ -66,7 +67,7 @@ export class EcsTasksStack extends NestedStack {
           subnetType: SubnetType.PRIVATE_WITH_EGRESS,
         },
         machineImage: EcsOptimizedImage.amazonLinux2(),
-        instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
+        instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.SMALL),
         userData: UserData.forLinux(),
         // Grant EC2 instances access to ECS cluster
         role: new Role(this, 'Ec2AccessRole', {
@@ -77,6 +78,31 @@ export class EcsTasksStack extends NestedStack {
         maxCapacity: 10,
       }
     );
+    // Scale up/down based on memory reservation for the cluster
+    // Add instance if memory reservation > 60%; remove if < 15%
+    autoScalingGroup.scaleOnMetric('ScaleUpOnMemoryReservation', {
+      metric: new Metric({
+        namespace: 'AWS/ECS',
+        metricName: 'MemoryReservation',
+        dimensionsMap: {
+          ClusterName: 'ECS-Cluster',
+        },
+        statistic: 'Average',
+      }),
+      scalingSteps: [
+        {
+          lower: 60,
+          change: 1,
+        },
+        {
+          upper: 15,
+          change: -1,
+        },
+      ],
+
+      adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
+      cooldown: Duration.seconds(60),
+    });
 
     // ECS cluster for executing tasks
     this.cluster = new Cluster(this, 'SeamlessExecutorCluster', {

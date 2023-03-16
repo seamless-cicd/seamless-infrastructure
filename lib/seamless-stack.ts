@@ -60,7 +60,7 @@ export class SeamlessStack extends Stack {
 
     // Seamless backend stack
     // Docker image is publicly hosted on DockerHub
-    const BACKEND_IMAGE = 'ejweiner/seamless-backend';
+    const BACKEND_IMAGE = 'jasonherngwang/seamless-backend';
 
     const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
       vpc: vpcStack.vpc,

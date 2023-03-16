@@ -5,8 +5,6 @@ import { z } from 'zod';
 
 const envSchema = z.object({
   AWS_ACCOUNT_ID: z.string(),
-  AWS_ACCESS_KEY: z.string(),
-  AWS_SECRET_ACCESS_KEY: z.string(),
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
   GITHUB_PAT: z.string(),
@@ -28,8 +26,6 @@ if (!parsedEnv.success) {
 
 export const {
   AWS_ACCOUNT_ID,
-  AWS_ACCESS_KEY,
-  AWS_SECRET_ACCESS_KEY,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
   GITHUB_PAT,

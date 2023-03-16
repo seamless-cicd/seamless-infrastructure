@@ -8,8 +8,14 @@ import {
   handleProcessError,
 } from '@seamless-cicd/execa-logged-process';
 
-const { STAGE_ID, UNIT_TEST_COMMAND, LOG_SUBSCRIBER_URL } = process.env;
-const DIR_TO_CLONE_INTO = '/data/app';
+const {
+  STAGE_ID,
+  UNIT_TEST_COMMAND,
+  LOG_SUBSCRIBER_URL,
+  COMMIT_HASH,
+  AWS_ECR_REPO,
+} = process.env;
+const DIR_TO_CLONE_INTO = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 

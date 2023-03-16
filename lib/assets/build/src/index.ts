@@ -25,7 +25,7 @@ const {
   LOG_SUBSCRIBER_URL,
   COMMIT_HASH,
 } = process.env;
-const DIR_TO_CLONE_INTO = '/data/app';
+const DIR_TO_CLONE_INTO = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
