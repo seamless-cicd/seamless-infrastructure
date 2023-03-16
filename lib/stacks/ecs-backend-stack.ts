@@ -90,6 +90,9 @@ export class EcsBackendStack extends NestedStack {
             }:${props.rdsPort || 5432}/seamless_rds?schema=public`,
             REDIS_HOST: props.elastiCacheEndpoint,
             REDIS_PORT: props.elastiCachePort || '6379',
+            // TODO: Interpolate Websockets API ID dynamically
+            WEBSOCKETS_API_URL:
+              'https://jze0ao6hi9.execute-api.us-east-1.amazonaws.com/production',
             // These environment variables are forwarded to the server
             AWS_ACCOUNT_ID,
             AWS_ACCESS_KEY,
