@@ -50,3 +50,11 @@ To test the state machine for development:
 * `cdk deploy`      deploy this stack to your default AWS account/region
 * `cdk diff`        compare deployed stack with current state
 * `cdk synth`       emits the synthesized CloudFormation template
+* `seamless deploy` will init `.env` file and deploy with aws cdk (package installed globally)
+
+### Testing commands
+
+* `node CLI/cli.js deploy`
+  * This will be `seamless deploy` in production when infrastructure npm package is installed globally
+  * This will create a `.env` file - with placeholder variables for now (will overwrite existing `.env` so save those variables if needed)
+  * Will run aws `cdk deploy`
