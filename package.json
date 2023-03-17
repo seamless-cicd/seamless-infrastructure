@@ -3,14 +3,13 @@
   "version": "0.1.0",
   "type": "module",
   "bin": {
-    "seamless": "CLI/cli.ts"
+    "seamless": "CLI/cli.js"
   },
   "scripts": {
     "build": "tsc",
     "watch": "tsc -w",
     "test": "jest",
-    "cdk": "cdk",
-    "dev-deploy": "ts-node CLI/cli.ts deploy"
+    "cdk": "cdk"
   },
   "devDependencies": {
     "@types/aws-lambda": "^8.10.111",

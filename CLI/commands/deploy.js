@@ -1,14 +1,14 @@
-import init from './init';
+import init from './init.js';
 import { exec } from 'child_process';
 import chalk from 'chalk'
 
-const CDK_DEPLOY = 'npm install';
+const CDK_DEPLOY = 'cdk deploy';
 const arrow = '\u2192';
 
 const deploy = () => {
   init();
 
-  exec(CDK_DEPLOY, (err: any, stdout: any, stderr: any) => {
+  exec(CDK_DEPLOY, (err, stdout, stderr) => {
     if (err) {
       console.error(err);
       console.error(`stderr: ${stderr}`);

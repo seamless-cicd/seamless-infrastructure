@@ -13,12 +13,8 @@ const init = () => {
   const variableOne = readlineSync.question(question1);
   const variableTwo = readlineSync.question(question2);
 
-  type Variables = {
-    [key: string]: string;
-  }
-
   // sample vars - to be replaced once decided
-  const envVars: Variables = {
+  const envVars = {
     VARIABLE_ONE: variableOne,
     VARIABLE_TWO: variableTwo,
   }
