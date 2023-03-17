@@ -92,7 +92,7 @@ export class SeamlessStack extends Stack {
       vpc: vpcStack.vpc,
       efs: efsStack.efs,
       // API Gateway URL to send container logs
-      logSubscriberUrl: `${apiGatewayStack.httpApi.attrApiEndpoint}/api/logs`,
+      logSubscriberUrl: `${apiGatewayStack.httpApi.attrApiEndpoint}/internal/log-updates`,
     });
     // ECS executors need the API Gateway URL so they can send logs
     ecsTasksStack.addDependency(apiGatewayStack);
