@@ -61,6 +61,6 @@
     "awsEcsCluster": "seamless-demo-cluster",
     "awsEcsService": "seamless-demo-notification",
     "awsEcrRepo": "seamless-demo-notification",
-    "logSubscriberUrl": "https://abc123.execute-api.us-east-1.amazonaws.com/api/logs"
+    "logSubscriberUrl": "https://abc123.execute-api.us-east-1.amazonaws.com/internal/log-updates"
   }
 }
