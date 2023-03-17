@@ -34,7 +34,7 @@ async function cloneRepo(): Promise<void> {
     await fs.emptyDir(DIR_TO_CLONE_INTO);
   }
 
-  // Clone the repository
+  // Shallow clone the repository
   try {
     await log(`Cloning source code from ${GITHUB_REPO_URL}`);
 
@@ -43,6 +43,8 @@ async function cloneRepo(): Promise<void> {
       'git',
       [
         'clone',
+        '--depth',
+        '1',
         `https://${GITHUB_PAT}@${GITHUB_REPO_URL.split('://')[1]}.git`,
         DIR_TO_CLONE_INTO,
       ],

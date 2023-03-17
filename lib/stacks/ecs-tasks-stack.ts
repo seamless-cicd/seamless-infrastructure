@@ -1,6 +1,5 @@
 import { Duration, NestedStack, NestedStackProps } from 'aws-cdk-lib';
 import { AdjustmentType, AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
-import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import {
   InstanceClass,
   InstanceSize,
@@ -25,6 +24,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
+import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import taskDefinitions from './ecs-task-definitions';
 
 export interface EcsTasksStackProps extends NestedStackProps {
@@ -79,7 +79,7 @@ export class EcsTasksStack extends NestedStack {
       }
     );
     // Scale up/down based on memory reservation for the cluster
-    // Add instance if memory reservation > 60%; remove if < 15%
+    // Add instance if memory reservation > 80%; remove if < 10%
     autoScalingGroup.scaleOnMetric('ScaleUpOnMemoryReservation', {
       metric: new Metric({
         namespace: 'AWS/ECS',
@@ -91,11 +91,11 @@ export class EcsTasksStack extends NestedStack {
       }),
       scalingSteps: [
         {
-          lower: 60,
+          lower: 80,
           change: 1,
         },
         {
-          upper: 15,
+          upper: 10,
           change: -1,
         },
       ],
