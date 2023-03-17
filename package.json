@@ -1,6 +1,7 @@
 {
   "name": "seamless",
   "version": "0.1.0",
+  "type": "module",
   "bin": {
     "seamless": "CLI/cli.ts"
   },
@@ -38,7 +39,11 @@
     "aws-cdk-lib": "^2.64.0",
     "aws-lambda": "^1.0.7",
     "aws-sdk": "^2.1328.0",
+    "chalk": "^5.2.0",
+    "commander": "^10.0.0",
     "constructs": "^10.0.0",
+    "fs": "^0.0.1-security",
+    "readline-sync": "^1.4.10",
     "source-map-support": "^0.5.21",
     "zod": "^3.21.4"
   }
