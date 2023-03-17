@@ -2,6 +2,7 @@ import { NestedStack, NestedStackProps, Fn } from 'aws-cdk-lib';
 import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
@@ -92,7 +93,7 @@ export class EcsBackendStack extends NestedStack {
             REDIS_PORT: props.elastiCachePort || '6379',
             // TODO: Interpolate Websockets API ID dynamically
             WEBSOCKETS_API_URL:
-              'https://jze0ao6hi9.execute-api.us-east-1.amazonaws.com/production',
+              'https://7az0hb4ky5.execute-api.us-east-1.amazonaws.com/production',
             // These environment variables are forwarded to the server
             AWS_ACCOUNT_ID,
             AWS_ACCESS_KEY,
@@ -104,5 +105,14 @@ export class EcsBackendStack extends NestedStack {
         },
       }
     );
+
+    // Add IAM policy to allow Fargate service to post connections to Websockets
+    const policy = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['execute-api:ManageConnections'],
+      resources: ['*'],
+    });
+
+    this.fargate.taskDefinition.addToTaskRolePolicy(policy);
   }
 }
