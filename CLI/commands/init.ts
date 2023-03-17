@@ -1,6 +1,6 @@
 import fs from 'fs';
 import chalk from 'chalk';
-import readlineSync from 'readline-sync'
+import readlineSync from 'readline-sync';
 
 const arrow = '\u2192';
 
@@ -13,8 +13,12 @@ const init = () => {
   const variableOne = readlineSync.question(question1);
   const variableTwo = readlineSync.question(question2);
 
+  type Variables = {
+    [key: string]: string;
+  }
+
   // sample vars - to be replaced once decided
-  const envVars = {
+  const envVars: Variables = {
     VARIABLE_ONE: variableOne,
     VARIABLE_TWO: variableTwo,
   }
