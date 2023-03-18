@@ -9,14 +9,14 @@ import {
 } from '@seamless-cicd/execa-logged-process';
 
 const {
-  GITHUB_PAT,
+  GITHUB_OAUTH_TOKEN,
   GITHUB_REPO_URL,
   STAGE_ID,
   LOG_SUBSCRIBER_URL,
   COMMIT_HASH,
   AWS_ECR_REPO,
 } = process.env;
-const DIR_TO_CLONE_INTO = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
+const WORKING_DIR = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
@@ -29,9 +29,9 @@ async function cloneRepo(): Promise<void> {
   await log(`Cloning stage starting; stage ID: ${STAGE_ID}`);
 
   // Remove any existing source code
-  if (fs.existsSync(DIR_TO_CLONE_INTO)) {
-    await log(`Removing existing source code from ${DIR_TO_CLONE_INTO}`);
-    await fs.emptyDir(DIR_TO_CLONE_INTO);
+  if (fs.existsSync(WORKING_DIR)) {
+    await log(`Removing existing source code from ${WORKING_DIR}`);
+    await fs.emptyDir(WORKING_DIR);
   }
 
   // Shallow clone the repository
@@ -45,8 +45,8 @@ async function cloneRepo(): Promise<void> {
         'clone',
         '--depth',
         '1',
-        `https://${GITHUB_PAT}@${GITHUB_REPO_URL.split('://')[1]}.git`,
-        DIR_TO_CLONE_INTO,
+        `https://${GITHUB_OAUTH_TOKEN}@${GITHUB_REPO_URL.split('://')[1]}.git`,
+        WORKING_DIR,
       ],
       {},
       LOG_SUBSCRIBER_URL,
@@ -67,7 +67,7 @@ async function cloneRepo(): Promise<void> {
   // Install dependencies
   try {
     await log('Installing dependencies');
-    process.chdir(DIR_TO_CLONE_INTO);
+    process.chdir(WORKING_DIR);
 
     const installProcess = await createLoggedProcess(
       'npm',
@@ -81,7 +81,7 @@ async function cloneRepo(): Promise<void> {
       await log('Dependencies installed');
     } else {
       await log('Failed to install dependencies; deleting cloned code');
-      await fs.emptyDir(DIR_TO_CLONE_INTO);
+      await fs.emptyDir(WORKING_DIR);
       process.exit(1);
     }
   } catch (error) {

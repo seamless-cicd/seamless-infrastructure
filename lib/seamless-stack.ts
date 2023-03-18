@@ -6,6 +6,7 @@ import { EcsBackendStack } from './stacks/ecs-backend-stack';
 import { EcsTasksStack } from './stacks/ecs-tasks-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
+import { DemoProdClusterStack } from './stacks/fargate-demo-prod-cluster-stack';
 import { DemoProdStack } from './stacks/fargate-demo-prod-stack';
 import { RdsStack } from './stacks/rds-stack';
 import { SnsStack } from './stacks/sns-stack';
@@ -25,7 +26,7 @@ export class SeamlessStack extends Stack {
       'SeamlessEc2BastionHost',
       {
         vpc: vpcStack.vpc,
-      }
+      },
     );
     ec2BastionHostStack.addDependency(vpcStack);
 
@@ -45,10 +46,12 @@ export class SeamlessStack extends Stack {
     });
     elastiCacheStack.addDependency(vpcStack);
 
-    // Demo Fargate Microservices Stack: API Gateway, Payment, Notification
-    const PAYMENT_SERVICE_IMAGE = 'jasonherngwang/seamless-demo-payment';
+    // Demo Microservices on Fargate: Payment Service and Notification Service
+    // Docker images
+    const PAYMENT_SERVICE_IMAGE =
+      'public.ecr.aws/z4c1u6t7/seamless-demo-payment:1';
     const NOTIFICATION_SERVICE_IMAGE =
-      'jasonherngwang/seamless-demo-notification';
+      'public.ecr.aws/z4c1u6t7/seamless-demo-notification:1';
 
     const demoProdStack = new DemoProdStack(this, 'SeamlessDemoProdStack', {
       vpc: vpcStack.vpc,
@@ -58,8 +61,7 @@ export class SeamlessStack extends Stack {
     demoProdStack.addDependency(vpcStack);
 
     // Seamless backend stack
-    // Docker image is publicly hosted on DockerHub
-    const BACKEND_IMAGE = 'jasonherngwang/seamless-backend';
+    const BACKEND_IMAGE = 'public.ecr.aws/z4c1u6t7/seamless-backend:1';
 
     const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
       vpc: vpcStack.vpc,
@@ -91,7 +93,7 @@ export class SeamlessStack extends Stack {
       vpc: vpcStack.vpc,
       efs: efsStack.efs,
       // API Gateway URL to send container logs
-      logSubscriberUrl: `${apiGatewayStack.httpApi.attrApiEndpoint}/api/logs`,
+      logSubscriberUrl: `${apiGatewayStack.httpApi.attrApiEndpoint}/internal/log-updates`,
     });
     // ECS executors need the API Gateway URL so they can send logs
     ecsTasksStack.addDependency(apiGatewayStack);
@@ -117,7 +119,7 @@ export class SeamlessStack extends Stack {
           ecsTasksStack.integrationTestTaskDefinition,
         deployStagingTaskDefinition: ecsTasksStack.deployStagingTaskDefinition,
         deployProdTaskDefinition: ecsTasksStack.deployProdTaskDefinition,
-      }
+      },
     );
 
     stateMachineStack.addDependency(vpcStack);

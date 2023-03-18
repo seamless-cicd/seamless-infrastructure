@@ -129,7 +129,7 @@ export class StateMachineStack extends NestedStack {
         {
           result: Result.fromString(status),
           resultPath: `$.runStatus.stages.${stageEnumToId[stage]}.status`,
-        }
+        },
       );
     };
 
@@ -149,7 +149,7 @@ export class StateMachineStack extends NestedStack {
             'Content-Type': ['application/json'],
           }),
           resultPath: '$.lastTaskOutput',
-        }
+        },
       );
     };
 
@@ -160,14 +160,14 @@ export class StateMachineStack extends NestedStack {
       {
         result: Result.fromString(Status.SUCCESS),
         resultPath: `$.runStatus.run.status`,
-      }
+      },
     )
       .next(createUpdateDbStatusTask())
       .next(
         createNotificationState('Notify: Pipeline succeeded', {
           stageStatus: Status.SUCCESS,
           runStatus: JsonPath.objectAt(`$.runStatus`),
-        })
+        }),
       )
       .next(new Succeed(this, 'Pipeline succeeded')); // Terminal state
 
@@ -178,14 +178,14 @@ export class StateMachineStack extends NestedStack {
       {
         result: Result.fromString(Status.FAILURE),
         resultPath: `$.runStatus.run.status`,
-      }
+      },
     )
       .next(createUpdateDbStatusTask())
       .next(
         createNotificationState(`Notify: Pipeline failed`, {
           stageStatus: Status.FAILURE,
           runStatus: JsonPath.objectAt(`$.runStatus`),
-        })
+        }),
       )
       .next(new Fail(this, `Pipeline failed`)); // Terminal state
 
@@ -197,7 +197,7 @@ export class StateMachineStack extends NestedStack {
           createNotificationState(`Notify: ${stage} started`, {
             stageStatus: Status.IN_PROGRESS,
             runStatus: JsonPath.objectAt(`$.runStatus`),
-          })
+          }),
         );
     };
 
@@ -209,7 +209,7 @@ export class StateMachineStack extends NestedStack {
           createNotificationState(`Notify: ${stage} succeeded`, {
             stageStatus: Status.SUCCESS,
             runStatus: JsonPath.objectAt(`$.runStatus`),
-          })
+          }),
         );
     };
 
@@ -222,7 +222,7 @@ export class StateMachineStack extends NestedStack {
           createNotificationState(`Notify: ${stage} failed`, {
             stageStatus: Status.FAILURE,
             runStatus: JsonPath.objectAt(`$.runStatus`),
-          })
+          }),
         )
         .next(tasksOnPipelineFailure);
     };
@@ -231,7 +231,7 @@ export class StateMachineStack extends NestedStack {
     // Environment variables passed as state machine input are injected into each task
     const createEcsRunTask = (
       stage: StageType,
-      taskDefinition: Ec2TaskDefinition
+      taskDefinition: Ec2TaskDefinition,
     ) => {
       return new EcsRunTask(this, stage, {
         integrationPattern: IntegrationPattern.RUN_JOB,
@@ -259,19 +259,11 @@ export class StateMachineStack extends NestedStack {
                 name: 'AWS_ACCOUNT_ID',
                 value: JsonPath.stringAt('$.containerVariables.awsAccountId'),
               },
-              // {
-              //   name: 'GITHUB_CLIENT_ID',
-              //   value: JsonPath.stringAt('$.containerVariables.githubClientId'),
-              // },
-              // {
-              //   name: 'GITHUB_CLIENT_SECRET',
-              //   value: JsonPath.stringAt(
-              //     '$.containerVariables.githubClientSecret'
-              //   ),
-              // },
               {
-                name: 'GITHUB_PAT',
-                value: JsonPath.stringAt('$.containerVariables.githubPat'),
+                name: 'GITHUB_OAUTH_TOKEN',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.githubOauthToken',
+                ),
               },
               {
                 name: 'GITHUB_REPO_URL',
@@ -284,13 +276,13 @@ export class StateMachineStack extends NestedStack {
               {
                 name: 'CODE_QUALITY_COMMAND',
                 value: JsonPath.stringAt(
-                  '$.containerVariables.codeQualityCommand'
+                  '$.containerVariables.codeQualityCommand',
                 ),
               },
               {
                 name: 'UNIT_TEST_COMMAND',
                 value: JsonPath.stringAt(
-                  '$.containerVariables.unitTestCommand'
+                  '$.containerVariables.unitTestCommand',
                 ),
               },
               {
@@ -300,13 +292,13 @@ export class StateMachineStack extends NestedStack {
               {
                 name: 'AWS_ECS_CLUSTER_STAGING',
                 value: JsonPath.stringAt(
-                  '$.containerVariables.awsEcsClusterStaging'
+                  '$.containerVariables.awsEcsClusterStaging',
                 ),
               },
               {
                 name: 'AWS_ECS_SERVICE_STAGING',
                 value: JsonPath.stringAt(
-                  '$.containerVariables.awsEcsServiceStaging'
+                  '$.containerVariables.awsEcsServiceStaging',
                 ),
               },
               {
@@ -330,7 +322,7 @@ export class StateMachineStack extends NestedStack {
     // Wrapper around `createEcsRunTask`; adds notifications, context, status updates
     const createStage = (
       currentStage: StageType,
-      taskDefinition: Ec2TaskDefinition
+      taskDefinition: Ec2TaskDefinition,
     ) => {
       // Update context object
       return tasksOnStart(currentStage)
@@ -339,7 +331,7 @@ export class StateMachineStack extends NestedStack {
             // Add error handling
             .addCatch(tasksOnFailure(currentStage), {
               resultPath: '$.error',
-            })
+            }),
         )
         .next(tasksOnSuccess(currentStage));
     };
@@ -347,13 +339,13 @@ export class StateMachineStack extends NestedStack {
     // State machine step chaining
     const prodChain = createStage(
       StageType.DEPLOY_PROD,
-      props.deployProdTaskDefinition
+      props.deployProdTaskDefinition,
     ).next(success);
 
     // Placeholder; replace with Lambda
     const waitForManualApproval = new Pass(
       this,
-      'Wait for manual approval of Staging environment'
+      'Wait for manual approval of Staging environment',
     ).next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
@@ -362,7 +354,7 @@ export class StateMachineStack extends NestedStack {
 
     const stagingChain = createStage(
       StageType.DEPLOY_STAGING,
-      props.deployStagingTaskDefinition
+      props.deployStagingTaskDefinition,
     ).next(autoDeployChoice);
 
     const stagingChoice = new Choice(this, 'Use a Staging environment?')
@@ -371,7 +363,7 @@ export class StateMachineStack extends NestedStack {
 
     const buildChain = createStage(
       StageType.BUILD,
-      props.buildTaskDefinition
+      props.buildTaskDefinition,
     ).next(stagingChoice);
 
     const fullPipelineChoice = new Choice(this, 'Run full pipeline?')
@@ -384,17 +376,17 @@ export class StateMachineStack extends NestedStack {
       {
         result: Result.fromString(Status.IN_PROGRESS),
         resultPath: `$.runStatus.run.status`,
-      }
+      },
     )
       .next(
         createNotificationState('Notify: Pipeline started', {
           stageStatus: Status.IN_PROGRESS,
           runStatus: JsonPath.objectAt(`$.runStatus`),
-        })
+        }),
       )
       .next(createStage(StageType.PREPARE, props.prepareTaskDefinition))
       .next(
-        createStage(StageType.CODE_QUALITY, props.codeQualityTaskDefinition)
+        createStage(StageType.CODE_QUALITY, props.codeQualityTaskDefinition),
       )
       .next(createStage(StageType.UNIT_TEST, props.unitTestTaskDefinition))
       .next(fullPipelineChoice);

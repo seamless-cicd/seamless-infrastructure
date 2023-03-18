@@ -1,13 +1,18 @@
-import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
-import { IVpc, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { Aspects, NestedStack, NestedStackProps, Tag } from 'aws-cdk-lib';
+import { IVpc, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import {
+  AppProtocol,
+  AwsLogDriver,
   Cluster,
   ContainerImage,
   FargateService,
   FargateTaskDefinition,
+  Protocol,
 } from 'aws-cdk-lib/aws-ecs';
-import { ApplicationLoadBalancer } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { PrivateDnsNamespace } from 'aws-cdk-lib/aws-servicediscovery';
+import {
+  ApplicationLoadBalancer,
+  ApplicationProtocol,
+} from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
@@ -20,12 +25,11 @@ export interface DemoProdStackProps extends NestedStackProps {
 }
 
 export class DemoProdStack extends NestedStack {
-  readonly securityGroup: SecurityGroup;
-  readonly privateDnsNamespace: PrivateDnsNamespace;
   readonly cluster: Cluster;
-  readonly loadBalancer: ApplicationLoadBalancer;
+  readonly securityGroup: SecurityGroup;
   readonly paymentService: FargateService;
   readonly notificationService: FargateService;
+  readonly loadBalancer: ApplicationLoadBalancer;
 
   constructor(scope: Construct, id: string, props: DemoProdStackProps) {
     super(scope, id, props);
@@ -43,37 +47,58 @@ export class DemoProdStack extends NestedStack {
       throw new Error('No Notification image provided');
     }
 
-    // Create Fargate cluster with Service Connect namespace
+    // Create Fargate cluster with Cloud Map namespace
     this.cluster = new Cluster(this, 'SeamlessDemoProdCluster', {
       vpc: props.vpc,
       containerInsights: true,
       defaultCloudMapNamespace: {
-        name: 'local',
+        name: 'seamless-demo-prod',
       },
     });
 
-    // Private namespace for service discovery
-    this.privateDnsNamespace = this.cluster
-      .defaultCloudMapNamespace as PrivateDnsNamespace;
-
-    // Create public-facing Payment Service (client-only Service Connect service)
-    const paymentTaskDefinition = new FargateTaskDefinition(
+    // Security group
+    this.securityGroup = new SecurityGroup(
       this,
-      'SeamlessDemoProdPaymentTaskDefinition'
+      'SeamlessDemoProdSecurityGroup',
+      {
+        vpc: props.vpc,
+        allowAllOutbound: true,
+      },
     );
 
-    paymentTaskDefinition.addContainer('PaymentContainer', {
-      containerName: 'PaymentContainer',
+    this.securityGroup.addIngressRule(
+      this.securityGroup,
+      Port.tcp(0),
+      'Allow traffic from the same security group',
+    );
+
+    Aspects.of(this.securityGroup).add(
+      new Tag('Name', 'SeamlessDemoProdClusterSecurityGroup'),
+    );
+
+    // Payment Service
+    const paymentTaskDefinition = new FargateTaskDefinition(
+      this,
+      'SeamlessDemoProdPaymentTaskDefinition',
+    );
+
+    paymentTaskDefinition.addContainer('SeamlessDemoProdPaymentContainer', {
+      containerName: 'SeamlessDemoProdPaymentContainer',
       image: ContainerImage.fromRegistry(props.paymentServiceImage),
       cpu: 256,
       memoryLimitMiB: 512,
       portMappings: [
         {
           containerPort: 3000,
-          // protocol: Protocol.TCP,
-          // appProtocol: AppProtocol.http,
+          name: 'seamless-demo-prod-payment-3000-tcp',
+          appProtocol: AppProtocol.http,
+          protocol: Protocol.TCP,
         },
       ],
+      logging: new AwsLogDriver({
+        streamPrefix: 'seamless-demo-prod-payment',
+        logRetention: 1,
+      }),
     });
 
     this.paymentService = new FargateService(
@@ -83,36 +108,51 @@ export class DemoProdStack extends NestedStack {
         assignPublicIp: true,
         cluster: this.cluster,
         serviceConnectConfiguration: {
-          namespace: this.privateDnsNamespace.namespaceName,
+          namespace: 'seamless-demo-prod',
+          services: [
+            {
+              port: 3000,
+              portMappingName: 'seamless-demo-prod-payment-3000-tcp',
+              discoveryName: 'seamless-demo-prod-payment',
+              dnsName: 'seamless-demo-prod-payment',
+            },
+          ],
         },
         taskDefinition: paymentTaskDefinition,
-      }
+        securityGroups: [this.securityGroup],
+      },
     );
 
     // Create private Notification Service (client-server Service Connect service)
     const notificationTaskDefinition = new FargateTaskDefinition(
       this,
-      'SeamlessDemoProdNotificationTaskDefinition'
+      'SeamlessDemoProdNotificationTaskDefinition',
     );
 
-    const notificationContainerPortMappingName =
-      'seamless-demo-prod-notification';
-
-    notificationTaskDefinition.addContainer('NotificationContainer', {
-      containerName: 'NotificationContainer',
-      image: ContainerImage.fromRegistry(props.notificationServiceImage),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      portMappings: [
-        {
-          containerPort: 3000,
-          name: notificationContainerPortMappingName,
+    notificationTaskDefinition.addContainer(
+      'SeamlessDemoProdNotificationContainer',
+      {
+        containerName: 'SeamlessDemoProdNotificationContainer',
+        image: ContainerImage.fromRegistry(props.notificationServiceImage),
+        cpu: 256,
+        memoryLimitMiB: 512,
+        portMappings: [
+          {
+            containerPort: 3000,
+            name: 'seamless-demo-prod-notification-3000-tcp',
+            appProtocol: AppProtocol.http,
+            protocol: Protocol.TCP,
+          },
+        ],
+        logging: new AwsLogDriver({
+          streamPrefix: 'seamless-demo-prod-notification',
+          logRetention: 1,
+        }),
+        environment: {
+          NOTIFICATION_ENDPOINT: process.env.DEMO_NOTIFICATION_ENDPOINT || '',
         },
-      ],
-      environment: {
-        NOTIFICATION_ENDPOINT: process.env.DEMO_NOTIFICATION_ENDPOINT || '',
       },
-    });
+    );
 
     this.notificationService = new FargateService(
       this,
@@ -121,11 +161,41 @@ export class DemoProdStack extends NestedStack {
         assignPublicIp: true,
         cluster: this.cluster,
         serviceConnectConfiguration: {
-          namespace: this.privateDnsNamespace.namespaceName,
-          services: [{ portMappingName: notificationContainerPortMappingName }],
+          namespace: 'seamless-demo-prod',
+          services: [
+            {
+              port: 3000,
+              portMappingName: 'seamless-demo-prod-notification-3000-tcp',
+              discoveryName: 'seamless-demo-notification',
+              dnsName: 'seamless-demo-prod-notification',
+            },
+          ],
         },
         taskDefinition: notificationTaskDefinition,
-      }
+        securityGroups: [this.securityGroup],
+      },
     );
+
+    // Load balancer
+    this.loadBalancer = new ApplicationLoadBalancer(
+      this,
+      'SeamlessDemoProdALB',
+      {
+        vpc: props.vpc,
+        internetFacing: true,
+      },
+    );
+
+    const listener = this.loadBalancer.addListener('Port80Listener', {
+      port: 80,
+      protocol: ApplicationProtocol.HTTP,
+      open: true,
+    });
+
+    listener.addTargets('SeamlessDemoProdPaymentService', {
+      port: 3000,
+      protocol: ApplicationProtocol.HTTP,
+      targets: [this.paymentService],
+    });
   }
 }
