@@ -60,6 +60,7 @@ export class EcsTasksStack extends NestedStack {
       this,
       'SeamlessAutoScalingGroup',
       {
+        autoScalingGroupName: 'SeamlessAutoScalingGroup',
         vpc: props.vpc,
         allowAllOutbound: true,
         associatePublicIpAddress: false,
@@ -76,22 +77,22 @@ export class EcsTasksStack extends NestedStack {
         minCapacity: 1,
         desiredCapacity: 1,
         maxCapacity: 10,
-      }
+      },
     );
     // Scale up/down based on memory reservation for the cluster
-    // Add instance if memory reservation > 80%; remove if < 10%
-    autoScalingGroup.scaleOnMetric('ScaleUpOnMemoryReservation', {
+    // Add instance if memory reservation > 70%; remove if < 10%
+    autoScalingGroup.scaleOnMetric('ScaleOnMemoryReservation', {
       metric: new Metric({
-        namespace: 'AWS/ECS',
+        namespace: 'SeamlessExecutorCluster',
         metricName: 'MemoryReservation',
         dimensionsMap: {
-          ClusterName: 'ECS-Cluster',
+          ClusterName: 'SeamlessExecutorCluster',
         },
         statistic: 'Average',
       }),
       scalingSteps: [
         {
-          lower: 80,
+          lower: 70,
           change: 1,
         },
         {
@@ -115,7 +116,7 @@ export class EcsTasksStack extends NestedStack {
     const capacityProvider = new AsgCapacityProvider(
       this,
       'SeamlessAsgCapacityProvider',
-      { autoScalingGroup }
+      { autoScalingGroup },
     );
 
     this.cluster.addAsgCapacityProvider(capacityProvider);
@@ -156,7 +157,7 @@ export class EcsTasksStack extends NestedStack {
     const createTaskDefinition = (
       stageName: string, // kebab-cased name
       taskDefinitionId: string, // PascalCased name
-      useEfs = true
+      useEfs = true,
     ) => {
       return taskDefinitions.create(
         this,
@@ -164,7 +165,7 @@ export class EcsTasksStack extends NestedStack {
         taskDefinitionId,
         useEfs ? efsDnsName : '',
         props.logSubscriberUrl,
-        taskRole
+        taskRole,
       ).taskDefinition;
     };
 
@@ -173,7 +174,7 @@ export class EcsTasksStack extends NestedStack {
 
     this.codeQualityTaskDefinition = createTaskDefinition(
       'code-quality',
-      'CodeQuality'
+      'CodeQuality',
     );
 
     this.unitTestTaskDefinition = createTaskDefinition('unit-test', 'UnitTest');
@@ -183,19 +184,19 @@ export class EcsTasksStack extends NestedStack {
       this,
       efsDnsName,
       props.logSubscriberUrl,
-      taskRole
+      taskRole,
     );
 
     this.deployStagingTaskDefinition = createTaskDefinition(
       'deploy-staging',
       'DeployStaging',
-      false
+      false,
     );
 
     this.deployProdTaskDefinition = createTaskDefinition(
       'deploy-prod',
       'DeployProd',
-      false
+      false,
     );
   }
 }

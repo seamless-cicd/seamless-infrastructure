@@ -6,6 +6,7 @@ import { EcsBackendStack } from './stacks/ecs-backend-stack';
 import { EcsTasksStack } from './stacks/ecs-tasks-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
+import { DemoProdClusterStack } from './stacks/fargate-demo-prod-cluster-stack';
 import { DemoProdStack } from './stacks/fargate-demo-prod-stack';
 import { RdsStack } from './stacks/rds-stack';
 import { SnsStack } from './stacks/sns-stack';
@@ -46,21 +47,28 @@ export class SeamlessStack extends Stack {
     elastiCacheStack.addDependency(vpcStack);
 
     // Demo Microservices on Fargate: Payment Service and Notification Service
-    // Docker images
-    const PAYMENT_SERVICE_IMAGE =
-      'public.ecr.aws/z4c1u6t7/seamless-demo-payment:1';
-    const NOTIFICATION_SERVICE_IMAGE =
-      'public.ecr.aws/z4c1u6t7/seamless-demo-notification:1';
+    // Cluster
+    const demoProdClusterStack = new DemoProdClusterStack(
+      this,
+      'SeamlessDemoProdClusterStack',
+      {
+        vpc: vpcStack.vpc,
+      },
+    );
+    demoProdClusterStack.addDependency(vpcStack);
 
+    // Microservices
     const demoProdStack = new DemoProdStack(this, 'SeamlessDemoProdStack', {
       vpc: vpcStack.vpc,
-      paymentServiceImage: PAYMENT_SERVICE_IMAGE,
-      notificationServiceImage: NOTIFICATION_SERVICE_IMAGE,
+      cluster: demoProdClusterStack.cluster,
+      paymentServiceImage: 'jasonherngwang/seamless-demo-prod-payment:1',
+      notificationServiceImage:
+        'jasonherngwang/seamless-demo-prod-notification:1',
     });
     demoProdStack.addDependency(vpcStack);
 
     // Seamless backend stack
-    const BACKEND_IMAGE = 'public.ecr.aws/z4c1u6t7/seamless-backend:1';
+    const BACKEND_IMAGE = 'jasonherngwang/seamless-backend:1';
 
     const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
       vpc: vpcStack.vpc,
@@ -79,7 +87,7 @@ export class SeamlessStack extends Stack {
     ecsBackendStack.addDependency(rdsStack);
     ecsBackendStack.addDependency(elastiCacheStack);
 
-    // API Gateway
+    // HTTP and WebSocket API Gateways
     const apiGatewayStack = new ApiGatewayStack(this, 'SeamlessApiGateway', {
       vpc: vpcStack.vpc,
       fargate: ecsBackendStack.fargate,

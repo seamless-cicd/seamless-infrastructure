@@ -1,5 +1,5 @@
 import { Aspects, NestedStack, NestedStackProps, Tag } from 'aws-cdk-lib';
-import { IVpc, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
+import { IVpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import {
   AppProtocol,
   AwsLogDriver,
@@ -20,12 +20,12 @@ config();
 
 export interface DemoProdStackProps extends NestedStackProps {
   readonly vpc: IVpc;
+  readonly cluster: Cluster;
   readonly paymentServiceImage: string;
   readonly notificationServiceImage: string;
 }
 
 export class DemoProdStack extends NestedStack {
-  readonly cluster: Cluster;
   readonly securityGroup: SecurityGroup;
   readonly paymentService: FargateService;
   readonly notificationService: FargateService;
@@ -39,6 +39,10 @@ export class DemoProdStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
+    if (!props?.cluster) {
+      throw new Error('No Cluster provided');
+    }
+
     if (!props?.paymentServiceImage) {
       throw new Error('No Payment image provided');
     }
@@ -46,15 +50,6 @@ export class DemoProdStack extends NestedStack {
     if (!props?.notificationServiceImage) {
       throw new Error('No Notification image provided');
     }
-
-    // Create Fargate cluster with Cloud Map namespace
-    this.cluster = new Cluster(this, 'SeamlessDemoProdCluster', {
-      vpc: props.vpc,
-      containerInsights: true,
-      defaultCloudMapNamespace: {
-        name: 'seamless-demo-prod',
-      },
-    });
 
     // Security group
     this.securityGroup = new SecurityGroup(
@@ -67,13 +62,13 @@ export class DemoProdStack extends NestedStack {
     );
 
     this.securityGroup.addIngressRule(
-      this.securityGroup,
-      Port.tcp(0),
-      'Allow traffic from the same security group',
+      Peer.anyIpv4(),
+      Port.tcp(3000),
+      'Allow traffic to port 3000',
     );
 
     Aspects.of(this.securityGroup).add(
-      new Tag('Name', 'SeamlessDemoProdClusterSecurityGroup'),
+      new Tag('Name', 'SeamlessDemoProdSecurityGroup'),
     );
 
     // Payment Service
@@ -106,7 +101,7 @@ export class DemoProdStack extends NestedStack {
       'SeamlessDemoProdPaymentService',
       {
         assignPublicIp: true,
-        cluster: this.cluster,
+        cluster: props.cluster,
         serviceConnectConfiguration: {
           namespace: 'seamless-demo-prod',
           services: [
@@ -159,14 +154,14 @@ export class DemoProdStack extends NestedStack {
       'SeamlessDemoProdNotificationService',
       {
         assignPublicIp: true,
-        cluster: this.cluster,
+        cluster: props.cluster,
         serviceConnectConfiguration: {
           namespace: 'seamless-demo-prod',
           services: [
             {
               port: 3000,
               portMappingName: 'seamless-demo-prod-notification-3000-tcp',
-              discoveryName: 'seamless-demo-notification',
+              discoveryName: 'seamless-demo-prod-notification',
               dnsName: 'seamless-demo-prod-notification',
             },
           ],
