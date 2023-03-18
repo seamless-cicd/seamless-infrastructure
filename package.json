@@ -1,7 +1,6 @@
 {
   "name": "seamless",
   "version": "0.1.0",
-  "type": "module",
   "bin": {
     "seamless": "CLI/cli.js"
   },

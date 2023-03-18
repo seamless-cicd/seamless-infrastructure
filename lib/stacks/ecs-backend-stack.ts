@@ -1,4 +1,4 @@
-import { NestedStack, NestedStackProps, Fn } from 'aws-cdk-lib';
+import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
 import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
@@ -11,11 +11,8 @@ config();
 // To be supplied by the user during setup
 import {
   AWS_ACCOUNT_ID,
-  AWS_ACCESS_KEY,
-  AWS_SECRET_ACCESS_KEY,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
-  GITHUB_PAT,
 } from '../constants';
 
 export interface EcsBackendStackProps extends NestedStackProps {
@@ -96,14 +93,11 @@ export class EcsBackendStack extends NestedStack {
               'https://7az0hb4ky5.execute-api.us-east-1.amazonaws.com/production',
             // These environment variables are forwarded to the server
             AWS_ACCOUNT_ID,
-            AWS_ACCESS_KEY,
-            AWS_SECRET_ACCESS_KEY,
             GITHUB_CLIENT_ID,
             GITHUB_CLIENT_SECRET,
-            GITHUB_PAT,
           },
         },
-      }
+      },
     );
 
     // Add IAM policy to allow Fargate service to post connections to Websockets

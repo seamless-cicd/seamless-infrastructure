@@ -1,28 +1,28 @@
 import {
+  Aspects,
   NestedStack,
   NestedStackProps,
   RemovalPolicy,
-  Aspects,
   Tag,
 } from 'aws-cdk-lib';
 import {
-  IVpc,
-  SecurityGroup,
-  Peer,
-  Port,
-  SubnetType,
   InstanceClass,
   InstanceSize,
   InstanceType,
+  IVpc,
+  Peer,
+  Port,
+  SecurityGroup,
+  SubnetType,
 } from 'aws-cdk-lib/aws-ec2';
 import {
+  Credentials,
   DatabaseInstance,
   DatabaseInstanceEngine,
   PostgresEngineVersion,
-  Credentials,
 } from 'aws-cdk-lib/aws-rds';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Secret } from 'aws-cdk-lib/aws-secretsmanager';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 export interface RdsStackProps extends NestedStackProps {
@@ -97,7 +97,7 @@ export class RdsStack extends NestedStack {
       securityGroups: [this.rdsSecurityGroup],
       credentials: Credentials.fromSecret(this.rdsCredentialsSecret),
       maxAllocatedStorage: 128,
-      deletionProtection: true,
+      deletionProtection: false,
       storageEncrypted: true,
       allowMajorVersionUpgrade: false,
       autoMinorVersionUpgrade: false,

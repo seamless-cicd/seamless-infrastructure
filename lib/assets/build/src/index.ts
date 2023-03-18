@@ -25,7 +25,7 @@ const {
   LOG_SUBSCRIBER_URL,
   COMMIT_HASH,
 } = process.env;
-const DIR_TO_CLONE_INTO = '/data/app';
+const WORKING_DIR = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
@@ -39,14 +39,14 @@ async function buildAndPushImage(): Promise<void> {
   await log(`Build and push stage starting; stage ID: ${STAGE_ID}`);
 
   // Verify that source code was cloned
-  if (!fs.existsSync(DIR_TO_CLONE_INTO)) {
-    await log(`Source code hasn't been cloned into ${DIR_TO_CLONE_INTO}`);
+  if (!fs.existsSync(WORKING_DIR)) {
+    await log(`Source code hasn't been cloned into ${WORKING_DIR}`);
     process.exit(1);
   }
 
   // Verify that a Dockerfile exists
   const pathToDockerfile = path.join(
-    DIR_TO_CLONE_INTO,
+    WORKING_DIR,
     DOCKERFILE_PATH,
     'Dockerfile',
   );
@@ -67,7 +67,7 @@ async function buildAndPushImage(): Promise<void> {
         `${AWS_ECR_REPO}:${COMMIT_HASH}`,
         '-t',
         `${AWS_ECR_REPO}:latest`,
-        path.join(DIR_TO_CLONE_INTO, DOCKERFILE_PATH),
+        path.join(WORKING_DIR, DOCKERFILE_PATH),
       ],
       {},
       LOG_SUBSCRIBER_URL,

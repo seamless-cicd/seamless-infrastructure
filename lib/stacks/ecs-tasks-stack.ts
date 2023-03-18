@@ -1,5 +1,5 @@
-import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
-import { AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
+import { Duration, NestedStack, NestedStackProps } from 'aws-cdk-lib';
+import { AdjustmentType, AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
 import {
   InstanceClass,
   InstanceSize,
@@ -24,6 +24,7 @@ import {
 } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
+import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import taskDefinitions from './ecs-task-definitions';
 
 export interface EcsTasksStackProps extends NestedStackProps {
@@ -59,6 +60,7 @@ export class EcsTasksStack extends NestedStack {
       this,
       'SeamlessAutoScalingGroup',
       {
+        autoScalingGroupName: 'SeamlessAutoScalingGroup',
         vpc: props.vpc,
         allowAllOutbound: true,
         associatePublicIpAddress: false,
@@ -66,7 +68,7 @@ export class EcsTasksStack extends NestedStack {
           subnetType: SubnetType.PRIVATE_WITH_EGRESS,
         },
         machineImage: EcsOptimizedImage.amazonLinux2(),
-        instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.MICRO),
+        instanceType: InstanceType.of(InstanceClass.T2, InstanceSize.SMALL),
         userData: UserData.forLinux(),
         // Grant EC2 instances access to ECS cluster
         role: new Role(this, 'Ec2AccessRole', {
@@ -75,8 +77,33 @@ export class EcsTasksStack extends NestedStack {
         minCapacity: 1,
         desiredCapacity: 1,
         maxCapacity: 10,
-      }
+      },
     );
+    // Scale up/down based on memory reservation for the cluster
+    // Add instance if memory reservation > 70%; remove if < 10%
+    autoScalingGroup.scaleOnMetric('ScaleOnMemoryReservation', {
+      metric: new Metric({
+        namespace: 'SeamlessExecutorCluster',
+        metricName: 'MemoryReservation',
+        dimensionsMap: {
+          ClusterName: 'SeamlessExecutorCluster',
+        },
+        statistic: 'Average',
+      }),
+      scalingSteps: [
+        {
+          lower: 70,
+          change: 1,
+        },
+        {
+          upper: 10,
+          change: -1,
+        },
+      ],
+
+      adjustmentType: AdjustmentType.CHANGE_IN_CAPACITY,
+      cooldown: Duration.seconds(60),
+    });
 
     // ECS cluster for executing tasks
     this.cluster = new Cluster(this, 'SeamlessExecutorCluster', {
@@ -89,7 +116,7 @@ export class EcsTasksStack extends NestedStack {
     const capacityProvider = new AsgCapacityProvider(
       this,
       'SeamlessAsgCapacityProvider',
-      { autoScalingGroup }
+      { autoScalingGroup },
     );
 
     this.cluster.addAsgCapacityProvider(capacityProvider);
@@ -130,7 +157,7 @@ export class EcsTasksStack extends NestedStack {
     const createTaskDefinition = (
       stageName: string, // kebab-cased name
       taskDefinitionId: string, // PascalCased name
-      useEfs = true
+      useEfs = true,
     ) => {
       return taskDefinitions.create(
         this,
@@ -138,7 +165,7 @@ export class EcsTasksStack extends NestedStack {
         taskDefinitionId,
         useEfs ? efsDnsName : '',
         props.logSubscriberUrl,
-        taskRole
+        taskRole,
       ).taskDefinition;
     };
 
@@ -147,7 +174,7 @@ export class EcsTasksStack extends NestedStack {
 
     this.codeQualityTaskDefinition = createTaskDefinition(
       'code-quality',
-      'CodeQuality'
+      'CodeQuality',
     );
 
     this.unitTestTaskDefinition = createTaskDefinition('unit-test', 'UnitTest');
@@ -157,19 +184,19 @@ export class EcsTasksStack extends NestedStack {
       this,
       efsDnsName,
       props.logSubscriberUrl,
-      taskRole
+      taskRole,
     );
 
     this.deployStagingTaskDefinition = createTaskDefinition(
       'deploy-staging',
       'DeployStaging',
-      false
+      false,
     );
 
     this.deployProdTaskDefinition = createTaskDefinition(
       'deploy-prod',
       'DeployProd',
-      false
+      false,
     );
   }
 }

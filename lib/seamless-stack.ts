@@ -1,12 +1,13 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ApiGatewayStack } from './stacks/api-gateway-stack';
-import { DemoFargateStack } from './stacks/demo-fargate-stack';
 import { Ec2BastionHostStack } from './stacks/ec2-bastion-host-stack';
 import { EcsBackendStack } from './stacks/ecs-backend-stack';
 import { EcsTasksStack } from './stacks/ecs-tasks-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
+import { DemoProdClusterStack } from './stacks/fargate-demo-prod-cluster-stack';
+import { DemoProdStack } from './stacks/fargate-demo-prod-stack';
 import { RdsStack } from './stacks/rds-stack';
 import { SnsStack } from './stacks/sns-stack';
 import { StateMachineStack } from './stacks/state-machine-stack';
@@ -25,7 +26,7 @@ export class SeamlessStack extends Stack {
       'SeamlessEc2BastionHost',
       {
         vpc: vpcStack.vpc,
-      }
+      },
     );
     ec2BastionHostStack.addDependency(vpcStack);
 
@@ -45,22 +46,29 @@ export class SeamlessStack extends Stack {
     });
     elastiCacheStack.addDependency(vpcStack);
 
-    // Demo Fargate Microservices Stack
-    const DEMO_IMAGE = 'jasonherngwang/seamless-demo-notification'; // Basic Express app
-
-    const demoFargateStack = new DemoFargateStack(
+    // Demo Microservices on Fargate: Payment Service and Notification Service
+    // Cluster
+    const demoProdClusterStack = new DemoProdClusterStack(
       this,
-      'SeamlessDemoFargateStack',
+      'SeamlessDemoProdClusterStack',
       {
         vpc: vpcStack.vpc,
-        demoImage: DEMO_IMAGE,
-      }
+      },
     );
-    demoFargateStack.addDependency(vpcStack);
+    demoProdClusterStack.addDependency(vpcStack);
+
+    // Microservices
+    const demoProdStack = new DemoProdStack(this, 'SeamlessDemoProdStack', {
+      vpc: vpcStack.vpc,
+      cluster: demoProdClusterStack.cluster,
+      paymentServiceImage: 'jasonherngwang/seamless-demo-prod-payment:1',
+      notificationServiceImage:
+        'jasonherngwang/seamless-demo-prod-notification:1',
+    });
+    demoProdStack.addDependency(vpcStack);
 
     // Seamless backend stack
-    // Docker image is publicly hosted on DockerHub
-    const BACKEND_IMAGE = 'ejweiner/seamless-backend';
+    const BACKEND_IMAGE = 'jasonherngwang/seamless-backend:1';
 
     const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
       vpc: vpcStack.vpc,
@@ -79,7 +87,7 @@ export class SeamlessStack extends Stack {
     ecsBackendStack.addDependency(rdsStack);
     ecsBackendStack.addDependency(elastiCacheStack);
 
-    // API Gateway
+    // HTTP and WebSocket API Gateways
     const apiGatewayStack = new ApiGatewayStack(this, 'SeamlessApiGateway', {
       vpc: vpcStack.vpc,
       fargate: ecsBackendStack.fargate,
@@ -118,7 +126,7 @@ export class SeamlessStack extends Stack {
           ecsTasksStack.integrationTestTaskDefinition,
         deployStagingTaskDefinition: ecsTasksStack.deployStagingTaskDefinition,
         deployProdTaskDefinition: ecsTasksStack.deployProdTaskDefinition,
-      }
+      },
     );
 
     stateMachineStack.addDependency(vpcStack);

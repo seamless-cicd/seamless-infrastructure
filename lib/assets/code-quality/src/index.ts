@@ -8,8 +8,14 @@ import {
   handleProcessError,
 } from '@seamless-cicd/execa-logged-process';
 
-const { STAGE_ID, CODE_QUALITY_COMMAND, LOG_SUBSCRIBER_URL } = process.env;
-const DIR_TO_CLONE_INTO = '/data/app';
+const {
+  STAGE_ID,
+  CODE_QUALITY_COMMAND,
+  LOG_SUBSCRIBER_URL,
+  COMMIT_HASH,
+  AWS_ECR_REPO,
+} = process.env;
+const WORKING_DIR = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
@@ -22,15 +28,15 @@ async function checkCodeQuality(): Promise<void> {
   await log(`Code quality stage starting; stage ID: ${STAGE_ID}`);
 
   // Verify that source code was cloned
-  if (!fs.existsSync(DIR_TO_CLONE_INTO)) {
-    await log(`Source code hasn't been cloned into ${DIR_TO_CLONE_INTO}`);
+  if (!fs.existsSync(WORKING_DIR)) {
+    await log(`Source code hasn't been cloned into ${WORKING_DIR}`);
     process.exit(1);
   }
 
   // Run code quality command
   try {
     await log(`Running code quality command:  ${CODE_QUALITY_COMMAND}`);
-    process.chdir(DIR_TO_CLONE_INTO);
+    process.chdir(WORKING_DIR);
 
     const codeQualityProcess = await createLoggedProcess(
       CODE_QUALITY_COMMAND.split(' ')[0],

@@ -52,15 +52,15 @@
     "githubClientId": "abc123",
     "githubClientSecret": "abc123",
     "githubPat": "ghp_012345679abc",
-    "githubRepoUrl": "https://github.com/seamless-cicd/seamless-demo-notification",
+    "githubRepoUrl": "https://github.com/seamless-cicd/seamless-demo-prod-notification",
     "codeQualityCommand": "npm run lint",
     "unitTestCommand": "npm run test",
     "dockerfilePath": ".",
     "awsEcsClusterStaging": "seamless-demo-cluster",
-    "awsEcsServiceStaging": "seamless-demo-notification",
+    "awsEcsServiceStaging": "seamless-demo-prod-notification",
     "awsEcsCluster": "seamless-demo-cluster",
-    "awsEcsService": "seamless-demo-notification",
-    "awsEcrRepo": "seamless-demo-notification",
+    "awsEcsService": "seamless-demo-prod-notification",
+    "awsEcrRepo": "seamless-demo-prod-notification",
     "logSubscriberUrl": "https://abc123.execute-api.us-east-1.amazonaws.com/internal/log-updates"
   }
 }

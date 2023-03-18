@@ -12,12 +12,12 @@ RUN apt-get update \
 # /data/app is the mounted shared Docker volume on EFS
 RUN mkdir -p /data/app \
   && chown -R node:node /data/app \
-  && chmod 700 /data/app
+  && chmod -R 700 /data/app
 
 # /usr/app is where the Seamless Prepare Stage executor script is stored
 RUN mkdir -p /usr/app \
   && chown -R node:node /usr/app \
-  && chmod 700 /usr/app
+  && chmod -R 700 /usr/app
 
 WORKDIR /usr/app
 
