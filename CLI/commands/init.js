@@ -1,6 +1,7 @@
 import fs from 'fs';
 import chalk from 'chalk';
 import readlineSync from 'readline-sync';
+import logo from '../logo.js';
 
 const question = (text) => {
   const boldText = `${chalk.bold(`${text}: `)}`;
@@ -39,6 +40,7 @@ const getEnvVariables = () => {
 }
 
 const init = () => {
+  console.log(logo);
   arrowText('Seamless Init:', '.env file');
 
   const envContents = getEnvVariables();
