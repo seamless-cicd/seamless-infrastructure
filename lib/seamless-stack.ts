@@ -6,7 +6,6 @@ import { EcsBackendStack } from './stacks/ecs-backend-stack';
 import { EcsTasksStack } from './stacks/ecs-tasks-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
-import { DemoProdClusterStack } from './stacks/fargate-demo-prod-cluster-stack';
 import { DemoProdStack } from './stacks/fargate-demo-prod-stack';
 import { RdsStack } from './stacks/rds-stack';
 import { SnsStack } from './stacks/sns-stack';
