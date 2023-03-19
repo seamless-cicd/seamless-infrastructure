@@ -10,12 +10,14 @@ import {
 
 const {
   STAGE_ID,
+  GITHUB_REPO_URL,
+  COMMIT_HASH,
   UNIT_TEST_COMMAND,
   LOG_SUBSCRIBER_URL,
-  COMMIT_HASH,
-  AWS_ECR_REPO,
 } = process.env;
-const WORKING_DIR = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
+
+const repoPath = GITHUB_REPO_URL.match(/\/([^/]+\/[^/.]+)(?:\.git)?$/)?.[1];
+const WORKING_DIR = `/data/app/${repoPath}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 

@@ -57,19 +57,19 @@ export class SeamlessStack extends Stack {
     );
     demoProdClusterStack.addDependency(vpcStack);
 
-    // Microservices
+    // Microservices - Provide your latest tagged images in ECR
     const demoProdStack = new DemoProdStack(this, 'SeamlessDemoProdStack', {
       vpc: vpcStack.vpc,
       cluster: demoProdClusterStack.cluster,
-      paymentServiceImage: 'jasonherngwang/seamless-demo-prod-payment:1',
+      paymentServiceImage:
+        '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-prod-payment:latest',
       notificationServiceImage:
-        'jasonherngwang/seamless-demo-prod-notification:1',
+        '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-prod-notification:latest',
+      notificationServiceEndpoint: 'https://eo181huqgm366vz.m.pipedream.net',
     });
     demoProdStack.addDependency(vpcStack);
 
-    // Seamless backend stack
-    const BACKEND_IMAGE = 'jasonherngwang/seamless-backend:1';
-
+    // Seamless backend stack - Publicly hosted
     const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
       vpc: vpcStack.vpc,
       rdsPassword: rdsStack.rdsCredentialsSecret
@@ -81,7 +81,7 @@ export class SeamlessStack extends Stack {
         elastiCacheStack.elastiCacheCluster.attrRedisEndpointAddress,
       elastiCachePort:
         elastiCacheStack.elastiCacheCluster.attrRedisEndpointPort, // string
-      backendImage: BACKEND_IMAGE,
+      backendImage: 'jasonherngwang/seamless-backend:1',
     });
     // Backend requires endpoints to create connection strings for RDS and Elasticache
     ecsBackendStack.addDependency(rdsStack);

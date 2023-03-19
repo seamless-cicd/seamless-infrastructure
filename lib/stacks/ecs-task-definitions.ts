@@ -1,14 +1,14 @@
-import { NestedStack, Fn } from 'aws-cdk-lib';
+import { Fn, NestedStack } from 'aws-cdk-lib';
 import {
-  Ec2TaskDefinition,
+  AwsLogDriver,
   ContainerImage,
+  DockerVolumeConfiguration,
+  Ec2TaskDefinition,
+  MountPoint,
   NetworkMode,
   Scope,
-  DockerVolumeConfiguration,
-  MountPoint,
-  AwsLogDriver,
 } from 'aws-cdk-lib/aws-ecs';
-import { Role } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
 
 import { config } from 'dotenv';
 config();
@@ -23,7 +23,7 @@ const createDockerVolumeMountPoint = (): MountPoint => {
 };
 
 const createDockerVolumeConfig = (
-  efsDnsName: string
+  efsDnsName: string,
 ): DockerVolumeConfiguration => {
   return {
     driver: 'local',
@@ -44,7 +44,7 @@ const create = (
   taskDefinitionId: string,
   efsDnsName: string,
   logSubscriberUrl: string,
-  taskRole: Role
+  taskRolePolicyStatement: PolicyStatement,
 ) => {
   const taskDefinition = new Ec2TaskDefinition(
     ecsTasksStack,
@@ -52,9 +52,9 @@ const create = (
     {
       family: `SeamlessExecutor${taskDefinitionId}`,
       networkMode: NetworkMode.BRIDGE,
-      taskRole,
-    }
+    },
   );
+  taskDefinition.addToTaskRolePolicy(taskRolePolicyStatement);
 
   // Add application container
   const container = taskDefinition.addContainer(
@@ -69,7 +69,7 @@ const create = (
       environment: {
         LOG_SUBSCRIBER_URL: logSubscriberUrl,
       },
-    }
+    },
   );
 
   if (efsDnsName) {
@@ -90,7 +90,7 @@ const createBuildTaskDefinition = (
   ecsTasksStack: NestedStack,
   efsDnsName: string,
   logSubscriberUrl: string,
-  taskRole: Role
+  taskRolePolicyStatement: PolicyStatement,
 ) => {
   const { taskDefinition, container } = create(
     ecsTasksStack,
@@ -98,7 +98,7 @@ const createBuildTaskDefinition = (
     'Build',
     efsDnsName,
     logSubscriberUrl,
-    taskRole
+    taskRolePolicyStatement,
   );
 
   // Add bind mount

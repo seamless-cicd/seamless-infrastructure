@@ -11,6 +11,7 @@ config();
 // To be supplied by the user during setup
 import {
   AWS_ACCOUNT_ID,
+  AWS_REGION,
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
 } from '../constants';
@@ -82,17 +83,14 @@ export class EcsBackendStack extends NestedStack {
           containerPort: 3000,
           environment: {
             BACKEND_PORT: '3000',
-            // Database name "seamless_rds" is defined in RDS Stack
             DATABASE_URL: `postgresql://postgres:${props.rdsPassword}@${
               props.rdsHostname
             }:${props.rdsPort || 5432}/seamless_rds?schema=public`,
             REDIS_HOST: props.elastiCacheEndpoint,
             REDIS_PORT: props.elastiCachePort || '6379',
-            // TODO: Interpolate Websockets API ID dynamically
-            WEBSOCKETS_API_URL:
-              'https://7az0hb4ky5.execute-api.us-east-1.amazonaws.com/production',
-            // These environment variables are forwarded to the server
+            // From .env
             AWS_ACCOUNT_ID,
+            AWS_REGION,
             GITHUB_CLIENT_ID,
             GITHUB_CLIENT_SECRET,
           },
@@ -103,7 +101,7 @@ export class EcsBackendStack extends NestedStack {
     // Add IAM policy to allow Fargate service to post connections to Websockets
     const policy = new PolicyStatement({
       effect: Effect.ALLOW,
-      actions: ['execute-api:ManageConnections'],
+      actions: ['execute-api:*', 'apigateway:*', 'states:*', 'ecs:*', 'ecr:*'],
       resources: ['*'],
     });
 
