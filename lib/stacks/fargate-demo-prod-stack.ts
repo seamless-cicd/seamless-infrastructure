@@ -4,7 +4,7 @@ import {
   AppProtocol,
   AwsLogDriver,
   Cluster,
-  ContainerImage,
+  EcrImage,
   FargateService,
   FargateTaskDefinition,
   Protocol,
@@ -13,6 +13,7 @@ import {
   ApplicationLoadBalancer,
   ApplicationProtocol,
 } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
@@ -23,6 +24,7 @@ export interface DemoProdStackProps extends NestedStackProps {
   readonly cluster: Cluster;
   readonly paymentServiceImage: string;
   readonly notificationServiceImage: string;
+  readonly notificationServiceEndpoint: string;
 }
 
 export class DemoProdStack extends NestedStack {
@@ -71,15 +73,25 @@ export class DemoProdStack extends NestedStack {
       new Tag('Name', 'SeamlessDemoProdSecurityGroup'),
     );
 
+    // Task execution role: Allow pulling images from private ECR repo
+    const executionRolePolicyStatement = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: ['ecr:*'],
+      resources: ['*'],
+    });
+
     // Payment Service
     const paymentTaskDefinition = new FargateTaskDefinition(
       this,
       'SeamlessDemoProdPaymentTaskDefinition',
     );
+    paymentTaskDefinition.addToExecutionRolePolicy(
+      executionRolePolicyStatement,
+    );
 
     paymentTaskDefinition.addContainer('SeamlessDemoProdPaymentContainer', {
       containerName: 'SeamlessDemoProdPaymentContainer',
-      image: ContainerImage.fromRegistry(props.paymentServiceImage),
+      image: EcrImage.fromRegistry(props.paymentServiceImage),
       cpu: 256,
       memoryLimitMiB: 512,
       portMappings: [
@@ -123,12 +135,15 @@ export class DemoProdStack extends NestedStack {
       this,
       'SeamlessDemoProdNotificationTaskDefinition',
     );
+    notificationTaskDefinition.addToExecutionRolePolicy(
+      executionRolePolicyStatement,
+    );
 
     notificationTaskDefinition.addContainer(
       'SeamlessDemoProdNotificationContainer',
       {
         containerName: 'SeamlessDemoProdNotificationContainer',
-        image: ContainerImage.fromRegistry(props.notificationServiceImage),
+        image: EcrImage.fromRegistry(props.notificationServiceImage),
         cpu: 256,
         memoryLimitMiB: 512,
         portMappings: [
@@ -144,7 +159,7 @@ export class DemoProdStack extends NestedStack {
           logRetention: 1,
         }),
         environment: {
-          NOTIFICATION_ENDPOINT: process.env.DEMO_NOTIFICATION_ENDPOINT || '',
+          NOTIFICATION_ENDPOINT: props.notificationServiceEndpoint,
         },
       },
     );

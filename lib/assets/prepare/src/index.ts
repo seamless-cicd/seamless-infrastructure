@@ -9,14 +9,17 @@ import {
 } from '@seamless-cicd/execa-logged-process';
 
 const {
+  STAGE_ID,
   GITHUB_OAUTH_TOKEN,
   GITHUB_REPO_URL,
-  STAGE_ID,
-  LOG_SUBSCRIBER_URL,
   COMMIT_HASH,
-  AWS_ECR_REPO,
+  LOG_SUBSCRIBER_URL,
 } = process.env;
-const WORKING_DIR = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
+
+// Extract owner and repo. Removes trailing ".git" if included
+// "https://github.com/owner/repo.git" becomes "owner/repo"
+const repoPath = GITHUB_REPO_URL.match(/\/([^/]+\/[^/.]+)(?:\.git)?$/)?.[1];
+const WORKING_DIR = `/data/app/${repoPath}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
@@ -34,18 +37,18 @@ async function cloneRepo(): Promise<void> {
     await fs.emptyDir(WORKING_DIR);
   }
 
-  // Shallow clone the repository
+  // Clone the repository
   try {
-    await log(`Cloning source code from ${GITHUB_REPO_URL}`);
+    await log(
+      `Cloning source code from ${GITHUB_REPO_URL}, commit ${COMMIT_HASH}`,
+    );
 
-    // GitHub classic PAT can be spliced into the repo URL for authentication
+    // Splice OAuth token into the repo URL for authentication
     const cloneProcess = await createLoggedProcess(
       'git',
       [
         'clone',
-        '--depth',
-        '1',
-        `https://${GITHUB_OAUTH_TOKEN}@${GITHUB_REPO_URL.split('://')[1]}.git`,
+        `https://${GITHUB_OAUTH_TOKEN}@github.com/${repoPath}.git`,
         WORKING_DIR,
       ],
       {},
@@ -60,18 +63,36 @@ async function cloneRepo(): Promise<void> {
       // End process here because dependency installation won't work
       process.exit(1);
     }
+
+    // Checkout the specified commit hash
+    await log(`Checking out commit ${COMMIT_HASH}`);
+
+    process.chdir(WORKING_DIR);
+    const checkoutProcess = await createLoggedProcess(
+      'git',
+      ['checkout', COMMIT_HASH],
+      {},
+      LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
+    );
+
+    if (checkoutProcess.exitCode === 0) {
+      await log('Checkout succeeded');
+    } else {
+      await log('Checkout failed');
+      process.exit(1);
+    }
   } catch (error) {
     await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });
   }
 
-  // Install dependencies
+  // Install all dependencies, including dev dependencies to be used for testing
   try {
     await log('Installing dependencies');
-    process.chdir(WORKING_DIR);
 
     const installProcess = await createLoggedProcess(
       'npm',
-      ['ci'],
+      ['install'],
       {},
       LOG_SUBSCRIBER_URL,
       { stageId: STAGE_ID },

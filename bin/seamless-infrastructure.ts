@@ -2,8 +2,8 @@
 import { config } from 'dotenv';
 config();
 
-import 'source-map-support/register';
 import * as cdk from 'aws-cdk-lib';
+import 'source-map-support/register';
 import { SeamlessStack } from '../lib/seamless-stack';
 
 const app = new cdk.App();

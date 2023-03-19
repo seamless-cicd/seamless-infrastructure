@@ -309,10 +309,6 @@ export class StateMachineStack extends NestedStack {
                 name: 'AWS_ECS_SERVICE',
                 value: JsonPath.stringAt('$.containerVariables.awsEcsService'),
               },
-              {
-                name: 'AWS_ECR_REPO',
-                value: JsonPath.stringAt('$.containerVariables.awsEcrRepo'),
-              },
             ],
           },
         ],

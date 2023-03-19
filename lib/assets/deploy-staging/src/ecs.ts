@@ -9,6 +9,8 @@ import {
   UpdateServiceCommand,
 } from '@aws-sdk/client-ecs';
 
+const { AWS_ACCOUNT_ID, AWS_REGION } = process.env;
+
 // All possible properties of RegisterTaskDefinitionCommandInput
 const taskDefinitionProperties = [
   'containerDefinitions',
@@ -31,36 +33,26 @@ const taskDefinitionProperties = [
 ];
 
 // Clients
-const createEcsClient = (awsRegion: string) =>
-  new ECSClient({ region: awsRegion });
+const createEcsClient = () => new ECSClient({ region: AWS_REGION });
 
-const createEcrClient = (awsRegion: string) =>
-  new ECRClient({ region: awsRegion });
+const createEcrClient = () => new ECRClient({ region: AWS_REGION });
 
 // ECR operations
 // Check if tagged image (e.g. "my-image:1.0") exists in the specified ECR repository
-const imageExistsInEcr = async (
-  awsAccountId: string,
-  awsRegion: string,
-  repositoryUri: string,
-  imageTag: string,
-) => {
-  const ecrClient = createEcrClient(awsRegion);
-  const repositoryName = repositoryUri.slice(repositoryUri.indexOf('/') + 1);
+const imageExistsInEcr = async (repositoryName: string, imageTag: string) => {
+  const ecrClient = createEcrClient();
 
-  const params = {
-    registryId: awsAccountId,
+  const command = new DescribeImagesCommand({
+    registryId: AWS_ACCOUNT_ID,
     repositoryName,
     imageIds: [
       {
         imageTag,
       },
     ],
-  };
+  });
 
-  const command = new DescribeImagesCommand(params);
   const { imageDetails } = await ecrClient.send(command);
-  console.log(imageDetails);
 
   if (!imageDetails || imageDetails.length === 0) {
     return false;
@@ -69,9 +61,33 @@ const imageExistsInEcr = async (
   }
 };
 
-const isEcrRepo = (awsAccountId: string, repositoryUri: string) => {
-  const prefix = `^${awsAccountId}.dkr.ecr`;
+const isEcrRepo = (repositoryUri: string) => {
+  const prefix = `^${AWS_ACCOUNT_ID}.dkr.ecr`;
   return new RegExp(prefix).test(repositoryUri);
+};
+
+const getAllImages = async (repositoryName: string) => {
+  const images = [];
+  let nextToken;
+
+  const ecrClient = createEcrClient();
+
+  // Paginate to retrieve all results
+  do {
+    const command = new DescribeImagesCommand({
+      registryId: AWS_ACCOUNT_ID,
+      repositoryName,
+      nextToken: nextToken,
+    }) as DescribeImagesCommand;
+
+    const { imageDetails, nextToken: newNextToken } = await ecrClient.send(
+      command,
+    );
+    images.push(...(imageDetails || []));
+    nextToken = newNextToken;
+  } while (nextToken);
+
+  return images;
 };
 
 // ECS operations
@@ -120,8 +136,6 @@ const findTaskDefinitionForService = async (
 
 // Create a new Task Definition, preserving as much as possible from the current one
 const updateTaskDefinitionWithNewImageTag = (
-  awsAccountId: string,
-  awsRegion: string,
   taskDefinition: TaskDefinition,
   newTag: string,
 ) => {
@@ -135,12 +149,10 @@ const updateTaskDefinitionWithNewImageTag = (
   const currentImage: string = newTaskDefinition.containerDefinitions[0].image;
   const currentRepoUri = currentImage.split(':')[0];
   const newImage = `${currentRepoUri}:${newTag}`;
+  const repositoryName = currentRepoUri.slice(currentRepoUri.indexOf('/') + 1);
 
   // Check if rollback target image exists
-  if (
-    isEcrRepo(awsAccountId, currentRepoUri) &&
-    !imageExistsInEcr(awsAccountId, awsRegion, currentRepoUri, newTag)
-  ) {
+  if (isEcrRepo(currentRepoUri) && !imageExistsInEcr(repositoryName, newTag)) {
     throw new Error(`image ${newImage} does not exist`);
   }
 
@@ -192,4 +204,5 @@ export default {
   updateTaskDefinitionWithNewImageTag,
   registerTaskDefinition,
   updateServiceWithNewTaskDefinition,
+  getAllImages,
 };

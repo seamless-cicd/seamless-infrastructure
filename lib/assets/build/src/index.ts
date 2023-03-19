@@ -17,15 +17,17 @@ import {
 } from '@seamless-cicd/execa-logged-process';
 
 const {
+  STAGE_ID,
   AWS_ACCOUNT_ID,
   AWS_REGION,
-  AWS_ECR_REPO,
-  STAGE_ID,
+  GITHUB_REPO_URL,
+  COMMIT_HASH,
   DOCKERFILE_PATH,
   LOG_SUBSCRIBER_URL,
-  COMMIT_HASH,
 } = process.env;
-const WORKING_DIR = `/data/app/${AWS_ECR_REPO}/${COMMIT_HASH}`;
+
+const repoPath = GITHUB_REPO_URL.match(/\/([^/]+\/[^/.]+)(?:\.git)?$/)?.[1];
+const WORKING_DIR = `/data/app/${repoPath}/${COMMIT_HASH}`;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
 
@@ -55,7 +57,12 @@ async function buildAndPushImage(): Promise<void> {
     process.exit(1);
   }
 
-  // Build Docker image
+  // Tag image with both the commit hash and "latest"
+  const fullEcrRepo = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${repoPath}`;
+  const fullEcrTag = `${fullEcrRepo}:${COMMIT_HASH}`;
+  const fullEcrTagLatest = `${fullEcrRepo}:latest`;
+
+  // Build and tag Docker images
   try {
     await log(`Building Docker image`);
 
@@ -64,9 +71,9 @@ async function buildAndPushImage(): Promise<void> {
       [
         'build',
         '-t',
-        `${AWS_ECR_REPO}:${COMMIT_HASH}`,
+        fullEcrTag,
         '-t',
-        `${AWS_ECR_REPO}:latest`,
+        fullEcrTagLatest,
         path.join(WORKING_DIR, DOCKERFILE_PATH),
       ],
       {},
@@ -126,9 +133,9 @@ async function buildAndPushImage(): Promise<void> {
 
   // Check if ECR repository exists
   try {
-    await log(`Checking if ${AWS_ECR_REPO} exists in ECR`);
+    await log(`Checking if ${repoPath} exists in ECR`);
     const describeCommand = new DescribeRepositoriesCommand({
-      repositoryNames: [AWS_ECR_REPO],
+      repositoryNames: [repoPath],
     });
 
     // This throws an error if the repo doesn't exist
@@ -136,16 +143,16 @@ async function buildAndPushImage(): Promise<void> {
     await log(`It exists in ECR`);
   } catch (error) {
     if (error.name === 'RepositoryNotFoundException') {
-      await log(`${AWS_ECR_REPO} does not exist in ECR; creating now`);
+      await log(`${repoPath} does not exist in ECR; creating now`);
       const createCommand = new CreateRepositoryCommand({
-        repositoryName: AWS_ECR_REPO,
+        repositoryName: repoPath,
       });
 
       await ecrClient.send(createCommand);
-      console.log(`ECR repository ${AWS_ECR_REPO} created`);
+      console.log(`ECR repository ${repoPath} created`);
     } else {
       await logger.emit(
-        `Error checking for ECR repository ${AWS_ECR_REPO}`,
+        `Error checking for ECR repository ${repoPath}`,
         'stderr',
         { stageId: STAGE_ID },
       );
@@ -153,23 +160,9 @@ async function buildAndPushImage(): Promise<void> {
     }
   }
 
-  // Tag image
-  const fullEcrTag = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${AWS_ECR_REPO}:${COMMIT_HASH}`;
-
+  // Push image with both tags
   try {
-    await execaCommand(
-      `docker tag ${AWS_ECR_REPO}:${COMMIT_HASH} ${fullEcrTag}`,
-    );
-  } catch (error) {
-    await logger.emit(`Error tagging image ${fullEcrTag}`, 'stderr', {
-      stageId: STAGE_ID,
-    });
-    process.exit(1);
-  }
-
-  // Push image
-  try {
-    await log(`Pushing image ${AWS_ECR_REPO} to ECR`);
+    await log(`Pushing image ${repoPath} to ECR`);
 
     const pushToEcrProcess = await createLoggedProcess(
       'docker',
@@ -180,9 +173,26 @@ async function buildAndPushImage(): Promise<void> {
     );
 
     if (pushToEcrProcess.exitCode === 0) {
-      await log('Push succeeded');
+      await log(`Push ${repoPath}:${COMMIT_HASH} succeeded`);
     } else {
-      await logger.emit('Push failed', 'stderr', {
+      await logger.emit(`Push ${repoPath}:${COMMIT_HASH} failed`, 'stderr', {
+        stageId: STAGE_ID,
+      });
+      process.exit(1);
+    }
+
+    const pushLatestToEcrProcess = await createLoggedProcess(
+      'docker',
+      ['push', fullEcrTagLatest],
+      {},
+      LOG_SUBSCRIBER_URL,
+      { stageId: STAGE_ID },
+    );
+
+    if (pushLatestToEcrProcess.exitCode === 0) {
+      await log(`Push ${repoPath}:latest succeeded`);
+    } else {
+      await logger.emit(`Push ${repoPath}:latest failed`, 'stderr', {
         stageId: STAGE_ID,
       });
       process.exit(1);

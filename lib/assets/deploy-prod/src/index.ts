@@ -5,13 +5,11 @@ import { LogEmitter } from '@seamless-cicd/execa-logged-process';
 import ecsService from './ecs.js';
 
 const {
-  AWS_REGION,
-  AWS_ACCOUNT_ID,
+  STAGE_ID,
   AWS_ECS_CLUSTER,
   AWS_ECS_SERVICE,
-  STAGE_ID,
-  LOG_SUBSCRIBER_URL,
   COMMIT_HASH,
+  LOG_SUBSCRIBER_URL,
 } = process.env;
 
 const logger = new LogEmitter(LOG_SUBSCRIBER_URL);
@@ -25,7 +23,7 @@ async function deployProd(): Promise<void> {
   try {
     await log(`Deploy to Prod stage starting; stage ID: ${STAGE_ID}`);
 
-    const ecsClient = ecsService.createEcsClient(AWS_REGION);
+    const ecsClient = ecsService.createEcsClient();
 
     // Find Task Definition currently used by Service
     const taskDefinition = await ecsService.findTaskDefinitionForService(
@@ -41,8 +39,6 @@ async function deployProd(): Promise<void> {
     // Update with new tag (git commit hash)
     const newTaskDefinition =
       await ecsService.updateTaskDefinitionWithNewImageTag(
-        AWS_ACCOUNT_ID,
-        AWS_REGION,
         taskDefinition,
         COMMIT_HASH,
       );

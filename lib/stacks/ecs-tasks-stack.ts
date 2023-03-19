@@ -17,7 +17,6 @@ import {
 import { FileSystem } from 'aws-cdk-lib/aws-efs';
 import {
   Effect,
-  PolicyDocument,
   PolicyStatement,
   Role,
   ServicePrincipal,
@@ -121,33 +120,18 @@ export class EcsTasksStack extends NestedStack {
 
     this.cluster.addAsgCapacityProvider(capacityProvider);
 
-    // Allow executor containers access to the resources they need
-    const taskDefinitionPolicyDocument = new PolicyDocument({
-      statements: [
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: [
-            'ec2:*',
-            'ecs:*',
-            'ecr:*',
-            'efs:*',
-            'elasticloadbalancing:*',
-          ],
-          resources: ['*'],
-        }),
-        new PolicyStatement({
-          effect: Effect.ALLOW,
-          actions: ['iam:PassRole'],
-          resources: ['*'],
-        }),
+    // Task role: Allow executor containers access to the resources they need
+    const taskRolePolicyStatement = new PolicyStatement({
+      effect: Effect.ALLOW,
+      actions: [
+        'ec2:*',
+        'ecs:*',
+        'ecr:*',
+        'efs:*',
+        'elasticloadbalancing:*',
+        'iam:PassRole',
       ],
-    });
-
-    const taskRole = new Role(this, 'EcsTaskRole', {
-      assumedBy: new ServicePrincipal('ecs-tasks.amazonaws.com'),
-      inlinePolicies: {
-        SeamlessEcsTaskPolicies: taskDefinitionPolicyDocument,
-      },
+      resources: ['*'],
     });
 
     // Some executors need access to a shared Docker volume on EFS
@@ -165,7 +149,7 @@ export class EcsTasksStack extends NestedStack {
         taskDefinitionId,
         useEfs ? efsDnsName : '',
         props.logSubscriberUrl,
-        taskRole,
+        taskRolePolicyStatement,
       ).taskDefinition;
     };
 
@@ -184,7 +168,7 @@ export class EcsTasksStack extends NestedStack {
       this,
       efsDnsName,
       props.logSubscriberUrl,
-      taskRole,
+      taskRolePolicyStatement,
     );
 
     this.deployStagingTaskDefinition = createTaskDefinition(
