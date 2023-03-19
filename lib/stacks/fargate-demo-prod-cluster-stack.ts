@@ -23,6 +23,7 @@ export class DemoProdClusterStack extends NestedStack {
 
     // Create Fargate cluster with Cloud Map namespace
     this.cluster = new Cluster(this, 'SeamlessDemoProdCluster', {
+      clusterName: 'SeamlessDemoProdCluster',
       vpc: props.vpc,
       containerInsights: true,
       defaultCloudMapNamespace: {

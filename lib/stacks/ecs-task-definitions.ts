@@ -1,4 +1,4 @@
-import { Fn, NestedStack } from 'aws-cdk-lib';
+import { NestedStack } from 'aws-cdk-lib';
 import {
   AwsLogDriver,
   ContainerImage,
@@ -8,7 +8,7 @@ import {
   NetworkMode,
   Scope,
 } from 'aws-cdk-lib/aws-ecs';
-import { PolicyStatement, Role } from 'aws-cdk-lib/aws-iam';
+import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 
 import { config } from 'dotenv';
 config();

@@ -98,10 +98,17 @@ export class EcsBackendStack extends NestedStack {
       },
     );
 
-    // Add IAM policy to allow Fargate service to post connections to Websockets
+    // Add IAM policy to grant permissions to the Backend (Fargate service)
     const policy = new PolicyStatement({
       effect: Effect.ALLOW,
-      actions: ['execute-api:*', 'apigateway:*', 'states:*', 'ecs:*', 'ecr:*'],
+      actions: [
+        'execute-api:*', // To post connections to Websockets
+        'apigateway:*', // To call HTTP and WebSocket API Gateways
+        'states:*', // To start Step Functions
+        'ecs:*', // To lookup Task Definitions and update ECS Services
+        'ecr:*', // To lookup ECR repositories
+        'iam:PassRole', // To allow the Fargate Service to pass its Role to ECS
+      ],
       resources: ['*'],
     });
 
