@@ -6,12 +6,12 @@ import { EcsBackendStack } from './stacks/ecs-backend-stack';
 import { EcsTasksStack } from './stacks/ecs-tasks-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
-import { DemoProdClusterStack } from './stacks/fargate-demo-prod-cluster-stack';
-import { DemoProdStack } from './stacks/fargate-demo-prod-stack';
+import { FargateWithServiceConnectStack } from './stacks/fargate-service-connect-stack';
 import { RdsStack } from './stacks/rds-stack';
 import { SnsStack } from './stacks/sns-stack';
 import { StateMachineStack } from './stacks/state-machine-stack';
 import { VpcStack } from './stacks/vpc-stack';
+import { ServiceOptions } from './types';
 
 export class SeamlessStack extends Stack {
   constructor(scope: Construct, id: string, props: StackProps) {
@@ -46,28 +46,49 @@ export class SeamlessStack extends Stack {
     });
     elastiCacheStack.addDependency(vpcStack);
 
-    // Demo Microservices on Fargate: Payment Service and Notification Service
-    // Cluster
-    const demoProdClusterStack = new DemoProdClusterStack(
+    // Fargate Cluster for Microservices: Payment and Notification
+    // Services can access each other at http://serviceDiscoveryName:port
+    const prodServices: ServiceOptions[] = [
+      {
+        name: 'payment',
+        serviceDiscoveryName: 'seamless-demo-payment',
+        image:
+          '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-payment:1',
+        port: 3000,
+        addToAlbTargetGroup: true,
+      },
+      {
+        name: 'notification',
+        serviceDiscoveryName: 'seamless-demo-notification',
+        image:
+          '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-notification:1',
+        port: 3000,
+        addToAlbTargetGroup: false,
+        environment: {
+          NOTIFICATION_ENDPOINT: 'https://eo181huqgm366vz.m.pipedream.net',
+        },
+      },
+    ];
+
+    // Demo - Production Cluster
+    const prodStack = new FargateWithServiceConnectStack(this, 'SeamlessProd', {
+      vpc: vpcStack.vpc,
+      services: prodServices,
+      entryPort: 3000, // The port on the public-facing service
+    });
+    prodStack.addDependency(vpcStack);
+
+    // Demo - Staging Cluster
+    const stagingStack = new FargateWithServiceConnectStack(
       this,
-      'SeamlessDemoProdClusterStack',
+      'SeamlessStaging',
       {
         vpc: vpcStack.vpc,
+        services: prodServices, // Same services as prod
+        entryPort: 3000,
       },
     );
-    demoProdClusterStack.addDependency(vpcStack);
-
-    // Microservices - Provide your latest tagged images in ECR
-    const demoProdStack = new DemoProdStack(this, 'SeamlessDemoProdStack', {
-      vpc: vpcStack.vpc,
-      cluster: demoProdClusterStack.cluster,
-      paymentServiceImage:
-        '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-prod-payment:latest',
-      notificationServiceImage:
-        '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-prod-notification:latest',
-      notificationServiceEndpoint: 'https://eo181huqgm366vz.m.pipedream.net',
-    });
-    demoProdStack.addDependency(vpcStack);
+    stagingStack.addDependency(vpcStack);
 
     // Seamless backend stack - Publicly hosted
     const ecsBackendStack = new EcsBackendStack(this, 'SeamlessBackend', {
