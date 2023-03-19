@@ -42,7 +42,7 @@ To deploy the CDK:
 To test the state machine for development:
 
 - Locate the appropriate Step Function in the AWS console
-- Pass input in the format specified in `state_machine_input.example.json`
+- Pass input in the format specified in `step_function_input.example.json`
 
 ### Useful commands
 
