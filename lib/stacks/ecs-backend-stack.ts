@@ -56,6 +56,7 @@ export class EcsBackendStack extends NestedStack {
 
     // Fargate cluster for Seamless backend server
     this.cluster = new Cluster(this, 'SeamlessBackendCluster', {
+      clusterName: 'SeamlessBackendCluster',
       vpc: props.vpc,
       containerInsights: true,
     });
@@ -66,6 +67,7 @@ export class EcsBackendStack extends NestedStack {
       this,
       'BackendALBFargateService',
       {
+        serviceName: 'SeamlessBackendService',
         cluster: this.cluster,
         cpu: 256,
         memoryLimitMiB: 1024,

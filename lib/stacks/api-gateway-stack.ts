@@ -181,7 +181,7 @@ export class ApiGatewayStack extends NestedStack {
     // Forwards the status code 200 back to the client, to complete the connection
     const connectRouteResponse = new CfnRouteResponse(
       this,
-      'SeamlessWebsocketsConnectResponseRoute', // Rename RouteResponse
+      'SeamlessWebsocketsConnectRouteResponse',
       {
         apiId: this.websocketsApi.attrApiId,
         routeId: connectRoute.ref,
@@ -204,7 +204,7 @@ export class ApiGatewayStack extends NestedStack {
 
     const disconnectRouteResponse = new CfnRouteResponse(
       this,
-      'SeamlessWebsocketsDisconnectResponseRoute', // Rename RouteResponse
+      'SeamlessWebsocketsDisconnectRouteResponse',
       {
         apiId: this.websocketsApi.attrApiId,
         routeId: disconnectRoute.ref,
@@ -237,8 +237,9 @@ export class ApiGatewayStack extends NestedStack {
       description: 'API Gateway URL to access public endpoints',
       exportName: 'SeamlessApiGatewayUrl',
     });
+
     new CfnOutput(this, 'SeamlessWebsocketsApiGatewayUrl', {
-      value: this.websocketsApi.attrApiEndpoint,
+      value: `https${this.websocketsApi.attrApiEndpoint.slice(3)}/production`,
       description: 'Websockets API Gateway URL to access public endpoints',
       exportName: 'SeamlessWebsocketsApiGatewayUrl',
     });

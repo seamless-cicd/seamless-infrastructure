@@ -1,4 +1,4 @@
-import { CfnOutput, NestedStack, NestedStackProps } from 'aws-cdk-lib';
+import { CfnOutput, NestedStack, NestedStackProps, Tags } from 'aws-cdk-lib';
 import { IVpc, Peer, Port, SecurityGroup } from 'aws-cdk-lib/aws-ec2';
 import {
   AppProtocol,
@@ -63,17 +63,17 @@ export class FargateWithServiceConnectStack extends NestedStack {
       this,
       `${id}FargateSecurityGroup`,
       {
-        securityGroupName: `${id}FargateSecurityGroup`,
         vpc: props.vpc,
         allowAllOutbound: true,
       },
     );
+    Tags.of(this.fargateSecurityGroup).add('Name', `${id}FargateSecurityGroup`);
 
     this.albSecurityGroup = new SecurityGroup(this, `${id}ALBSecurityGroup`, {
-      securityGroupName: `${id}ALBSecurityGroup`,
       vpc: props.vpc,
       allowAllOutbound: true,
     });
+    Tags.of(this.albSecurityGroup).add('Name', `${id}ALBSecurityGroup`);
 
     // Allow access to the public-facing service
     this.fargateSecurityGroup.addIngressRule(
@@ -172,11 +172,11 @@ export class FargateWithServiceConnectStack extends NestedStack {
     // Public load balancer
     const loadBalancerName = `${id}ALB`;
     this.loadBalancer = new ApplicationLoadBalancer(this, loadBalancerName, {
-      loadBalancerName,
       vpc: props.vpc,
       internetFacing: true,
       securityGroup: this.albSecurityGroup,
     });
+    Tags.of(this.loadBalancer).add('Name', loadBalancerName);
 
     // ALB listens for requests on port 80
     const httpListener = this.loadBalancer.addListener(`${id}ALBHttpListener`, {
