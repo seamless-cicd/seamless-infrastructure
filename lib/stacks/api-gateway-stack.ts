@@ -10,12 +10,12 @@ import {
   CfnVpcLink,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
-import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
+import { ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
 import { Construct } from 'constructs';
 
 export interface ApiGatewayStackProps extends NestedStackProps {
   readonly vpc: IVpc;
-  readonly fargate: ApplicationLoadBalancedFargateService;
+  readonly listener: ApplicationListener;
 }
 
 export class ApiGatewayStack extends NestedStack {
@@ -30,8 +30,8 @@ export class ApiGatewayStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
-    if (!props?.fargate) {
-      throw new Error('No Fargate Service provided');
+    if (!props?.listener) {
+      throw new Error('No ALB HTTP listener provided');
     }
 
     // CORS configuration
@@ -66,7 +66,7 @@ export class ApiGatewayStack extends NestedStack {
         connectionId: vpcLink.attrVpcLinkId,
         connectionType: 'VPC_LINK',
         integrationMethod: 'ANY', // GET, POST, or ANY
-        integrationUri: props.fargate.listener.listenerArn,
+        integrationUri: props.listener.listenerArn,
         payloadFormatVersion: '1.0',
       },
     );

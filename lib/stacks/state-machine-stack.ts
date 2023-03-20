@@ -5,6 +5,8 @@ import {
   NestedStackProps,
   Stack,
 } from 'aws-cdk-lib';
+import { CfnApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import {
   Cluster,
   ContainerDefinition,
@@ -32,9 +34,6 @@ import {
   SnsPublish,
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
-
-import { CfnApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { randomUUID } from 'crypto';
 
 import { config } from 'dotenv';
