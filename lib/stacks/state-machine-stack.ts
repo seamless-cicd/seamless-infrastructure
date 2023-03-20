@@ -71,6 +71,7 @@ enum Status {
   SUCCESS = 'SUCCESS',
   FAILURE = 'FAILURE',
   IN_PROGRESS = 'IN_PROGRESS',
+  AWAITING_APPROVAL = 'AWAITING_APPROVAL',
   IDLE = 'IDLE',
 }
 
@@ -130,6 +131,17 @@ export class StateMachineStack extends NestedStack {
         {
           result: Result.fromString(status),
           resultPath: `$.runStatus.stages.${stageEnumToId[stage]}.status`,
+        },
+      );
+    };
+
+    const createUpdateRunStatusTask = (status: Status) => {
+      return new Pass(
+        this,
+        `Update state machine context: Run is now ${status}`,
+        {
+          result: Result.fromString(status),
+          resultPath: `$.runStatus.run.status`,
         },
       );
     };
@@ -361,11 +373,18 @@ export class StateMachineStack extends NestedStack {
         }),
         resultPath: '$.lastTaskOutput',
       },
-    ).next(prodChain);
+    );
+
+    const waitForManualApprovalChain = createUpdateRunStatusTask(
+      Status.AWAITING_APPROVAL,
+    )
+      .next(waitForManualApproval)
+      .next(createUpdateRunStatusTask(Status.IN_PROGRESS))
+      .next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
       .when(Condition.booleanEquals('$.autoDeploy', true), prodChain)
-      .otherwise(waitForManualApproval);
+      .otherwise(waitForManualApprovalChain);
 
     const stagingChain = createStage(
       StageType.DEPLOY_STAGING,
