@@ -357,6 +357,7 @@ export class StateMachineStack extends NestedStack {
         heartbeatTimeout: Timeout.duration(Duration.days(10)),
         headers: TaskInput.fromObject({
           'Content-Type': ['application/json'],
+          TaskToken: JsonPath.taskToken,
         }),
         resultPath: '$.lastTaskOutput',
       },
