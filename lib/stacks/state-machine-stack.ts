@@ -393,10 +393,10 @@ export class StateMachineStack extends NestedStack {
       timeout: Duration.minutes(60),
     });
 
-    // Supply the public URL of the API gateway
+    // Supply the ARN of the state machine
     new CfnOutput(this, 'SeamlessStateMachineArn', {
       value: this.stateMachine.stateMachineArn,
-      description: 'State machine ARN for the backend to reference',
+      description: 'State machine ARN',
       exportName: 'SeamlessStateMachineArn',
     });
   }

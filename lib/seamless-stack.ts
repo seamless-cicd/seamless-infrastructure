@@ -1,4 +1,4 @@
-import { Stack, StackProps } from 'aws-cdk-lib';
+import { Fn, Stack, StackProps } from 'aws-cdk-lib';
 import { Construct } from 'constructs';
 import { ApiGatewayStack } from './stacks/api-gateway-stack';
 import { Ec2BastionHostStack } from './stacks/ec2-bastion-host-stack';
@@ -156,5 +156,19 @@ export class SeamlessStack extends Stack {
     stateMachineStack.addDependency(rdsStack);
     stateMachineStack.addDependency(ecsBackendStack);
     stateMachineStack.addDependency(apiGatewayStack);
+
+    // Provide API Gateway URLs to Backend, as environment variables
+    ecsBackendStack.fargate.taskDefinition.defaultContainer?.addEnvironment(
+      'BACKEND_URL',
+      Fn.importValue('SeamlessApiGatewayUrl'),
+    );
+    ecsBackendStack.fargate.taskDefinition.defaultContainer?.addEnvironment(
+      'WEBSOCKETS_API_URL',
+      `${Fn.importValue('SeamlessWebsocketsApiGatewayUrl')}/production`,
+    );
+    ecsBackendStack.fargate.taskDefinition.defaultContainer?.addEnvironment(
+      'STEP_FUNCTION_ARN',
+      Fn.importValue('SeamlessStateMachineArn'),
+    );
   }
 }

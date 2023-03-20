@@ -98,13 +98,6 @@ export class ApiGatewayStack extends NestedStack {
       target: `integrations/${integration.ref}`,
     });
 
-    // Supply the public URL of the API gateway
-    new CfnOutput(this, 'SeamlessApiGatewayUrl', {
-      value: this.httpApi.attrApiEndpoint,
-      description: 'API Gateway URL to access public endpoints',
-      exportName: 'SeamlessApiGatewayUrl',
-    });
-
     // Define Websockets API
     this.websocketsApi = new CfnApi(this, 'SeamlessWebsocketsApi', {
       name: 'SeamlessWebsocketsApi',
@@ -188,7 +181,7 @@ export class ApiGatewayStack extends NestedStack {
     // Forwards the status code 200 back to the client, to complete the connection
     const connectRouteResponse = new CfnRouteResponse(
       this,
-      'SeamlessWebsocketsConnectRouteResponse',
+      'SeamlessWebsocketsConnectResponseRoute', // Rename RouteResponse
       {
         apiId: this.websocketsApi.attrApiId,
         routeId: connectRoute.ref,
@@ -211,7 +204,7 @@ export class ApiGatewayStack extends NestedStack {
 
     const disconnectRouteResponse = new CfnRouteResponse(
       this,
-      'SeamlessWebsocketsDisconnectRouteResponse',
+      'SeamlessWebsocketsDisconnectResponseRoute', // Rename RouteResponse
       {
         apiId: this.websocketsApi.attrApiId,
         routeId: disconnectRoute.ref,
@@ -238,7 +231,12 @@ export class ApiGatewayStack extends NestedStack {
     websocketsApiDeployment.node.addDependency(connectRoute);
     websocketsApiDeployment.node.addDependency(disconnectRoute);
 
-    // Supply the public URL of the Websockets API
+    // Supply the public URLs of the API gateways
+    new CfnOutput(this, 'SeamlessApiGatewayUrl', {
+      value: this.httpApi.attrApiEndpoint,
+      description: 'API Gateway URL to access public endpoints',
+      exportName: 'SeamlessApiGatewayUrl',
+    });
     new CfnOutput(this, 'SeamlessWebsocketsApiGatewayUrl', {
       value: this.websocketsApi.attrApiEndpoint,
       description: 'Websockets API Gateway URL to access public endpoints',

@@ -82,17 +82,19 @@ export class EcsBackendStack extends NestedStack {
           image: backendServiceImage,
           containerPort: 3000,
           environment: {
-            BACKEND_PORT: '3000',
-            DATABASE_URL: `postgresql://postgres:${props.rdsPassword}@${
-              props.rdsHostname
-            }:${props.rdsPort || 5432}/seamless_rds?schema=public`,
-            REDIS_HOST: props.elastiCacheEndpoint,
-            REDIS_PORT: props.elastiCachePort || '6379',
             // From .env
             AWS_ACCOUNT_ID,
             AWS_REGION,
             GITHUB_CLIENT_ID,
             GITHUB_CLIENT_SECRET,
+            // Hardcoded
+            BACKEND_PORT: '3000',
+            // Dynamically generated
+            DATABASE_URL: `postgresql://postgres:${props.rdsPassword}@${
+              props.rdsHostname
+            }:${props.rdsPort || 5432}/seamless_rds?schema=public`,
+            REDIS_HOST: props.elastiCacheEndpoint,
+            REDIS_PORT: props.elastiCachePort || '6379',
           },
         },
       },
