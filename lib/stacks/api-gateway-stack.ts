@@ -1,11 +1,13 @@
 import { CfnOutput, NestedStack, NestedStackProps } from 'aws-cdk-lib';
 import {
   CfnApi,
+  CfnDeployment,
   CfnIntegration,
+  CfnIntegrationResponse,
   CfnRoute,
+  CfnRouteResponse,
   CfnStage,
   CfnVpcLink,
-  CfnDeployment,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
@@ -66,7 +68,7 @@ export class ApiGatewayStack extends NestedStack {
         integrationMethod: 'ANY', // GET, POST, or ANY
         integrationUri: props.fargate.listener.listenerArn,
         payloadFormatVersion: '1.0',
-      }
+      },
     );
 
     new CfnStage(this, 'SeamlessHttpApiStage', {
@@ -129,7 +131,18 @@ export class ApiGatewayStack extends NestedStack {
         templateSelectionExpression: '\\$default',
         integrationUri:
           this.httpApi.attrApiEndpoint + '/internal/websockets/connect',
-      }
+      },
+    );
+
+    // Connect integration - Response
+    const connectIntegrationResponse = new CfnIntegrationResponse(
+      this,
+      'SeamlessWebsocketToHttpConnectIntegrationResponse',
+      {
+        apiId: this.websocketsApi.attrApiId,
+        integrationId: connectIntegration.ref,
+        integrationResponseKey: '$default',
+      },
     );
 
     const disconnectIntegration = new CfnIntegration(
@@ -150,7 +163,17 @@ export class ApiGatewayStack extends NestedStack {
         templateSelectionExpression: '\\$default',
         integrationUri:
           this.httpApi.attrApiEndpoint + '/internal/websockets/disconnect',
-      }
+      },
+    );
+
+    const disconnectIntegrationResponse = new CfnIntegrationResponse(
+      this,
+      'SeamlessWebsocketToHttpDisconnectIntegrationResponse',
+      {
+        apiId: this.websocketsApi.attrApiId,
+        integrationId: disconnectIntegration.ref,
+        integrationResponseKey: '$default',
+      },
     );
 
     // Defines a route that listens for websocket connections
@@ -159,18 +182,41 @@ export class ApiGatewayStack extends NestedStack {
       routeKey: '$connect',
       authorizationType: 'NONE',
       target: `integrations/${connectIntegration.ref}`,
+      routeResponseSelectionExpression: '$default',
     });
+
+    // Forwards the status code 200 back to the client, to complete the connection
+    const connectRouteResponse = new CfnRouteResponse(
+      this,
+      'SeamlessWebsocketsConnectRouteResponse',
+      {
+        apiId: this.websocketsApi.attrApiId,
+        routeId: connectRoute.ref,
+        routeResponseKey: '$default',
+      },
+    );
 
     // Defines a route that listens for websocket disconnections
     const disconnectRoute = new CfnRoute(
       this,
-      'SeamlessWebsocketsDisonnectRoute',
+      'SeamlessWebsocketsDisconnectRoute',
       {
         apiId: this.websocketsApi.attrApiId,
         routeKey: '$disconnect',
         authorizationType: 'NONE',
         target: `integrations/${disconnectIntegration.ref}`,
-      }
+        routeResponseSelectionExpression: '$default',
+      },
+    );
+
+    const disconnectRouteResponse = new CfnRouteResponse(
+      this,
+      'SeamlessWebsocketsDisconnectRouteResponse',
+      {
+        apiId: this.websocketsApi.attrApiId,
+        routeId: disconnectRoute.ref,
+        routeResponseKey: '$default',
+      },
     );
 
     const websocketsApiDeployment = new CfnDeployment(
@@ -178,7 +224,7 @@ export class ApiGatewayStack extends NestedStack {
       `SeamlessWebsocketsApiDeployment`,
       {
         apiId: this.websocketsApi.attrApiId,
-      }
+      },
     );
 
     new CfnStage(this, 'SeamlessWebsocketsApiStage', {
