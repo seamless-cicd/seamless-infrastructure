@@ -23,6 +23,7 @@ import {
   StateMachine,
   Succeed,
   TaskInput,
+  Timeout,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import {
   CallApiGatewayHttpApiEndpoint,
@@ -338,10 +339,27 @@ export class StateMachineStack extends NestedStack {
       props.deployProdTaskDefinition,
     ).next(success);
 
-    // Placeholder; replace with Lambda
-    const waitForManualApproval = new Pass(
+    const waitForManualApproval = new CallApiGatewayHttpApiEndpoint(
       this,
       'Wait for manual approval of Staging environment',
+      {
+        apiId: props.httpApi.attrApiId,
+        apiStack: Stack.of(props.httpApi),
+        method: HttpMethod.POST,
+        integrationPattern: IntegrationPattern.WAIT_FOR_TASK_TOKEN,
+        // Pass task token and runId to backend to hold onto
+        requestBody: TaskInput.fromObject({
+          taskToken: JsonPath.taskToken,
+          runId: '$.runStatus.run.id',
+        }),
+        apiPath: '/internal/status-updates/wait-for-approval',
+        // Timeout approval stage after 10 days
+        heartbeatTimeout: Timeout.duration(Duration.days(10)),
+        headers: TaskInput.fromObject({
+          'Content-Type': ['application/json'],
+        }),
+        resultPath: '$.lastTaskOutput',
+      },
     ).next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
