@@ -25,6 +25,7 @@ import {
   StateMachine,
   Succeed,
   TaskInput,
+  Timeout,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import {
   CallApiGatewayHttpApiEndpoint,
@@ -69,6 +70,7 @@ enum Status {
   SUCCESS = 'SUCCESS',
   FAILURE = 'FAILURE',
   IN_PROGRESS = 'IN_PROGRESS',
+  AWAITING_APPROVAL = 'AWAITING_APPROVAL',
   IDLE = 'IDLE',
 }
 
@@ -128,6 +130,17 @@ export class StateMachineStack extends NestedStack {
         {
           result: Result.fromString(status),
           resultPath: `$.runStatus.stages.${stageEnumToId[stage]}.status`,
+        },
+      );
+    };
+
+    const createUpdateRunStatusTask = (status: Status) => {
+      return new Pass(
+        this,
+        `Update state machine context: Run is now ${status}`,
+        {
+          result: Result.fromString(status),
+          resultPath: `$.runStatus.run.status`,
         },
       );
     };
@@ -337,15 +350,40 @@ export class StateMachineStack extends NestedStack {
       props.deployProdTaskDefinition,
     ).next(success);
 
-    // Placeholder; replace with Lambda
-    const waitForManualApproval = new Pass(
+    const waitForManualApproval = new CallApiGatewayHttpApiEndpoint(
       this,
       'Wait for manual approval of Staging environment',
-    ).next(prodChain);
+      {
+        apiId: props.httpApi.attrApiId,
+        apiStack: Stack.of(props.httpApi),
+        method: HttpMethod.POST,
+        integrationPattern: IntegrationPattern.WAIT_FOR_TASK_TOKEN,
+        // Pass task token and runId to backend to hold onto
+        requestBody: TaskInput.fromObject({
+          taskToken: JsonPath.taskToken,
+          runId: '$.runStatus.run.id',
+        }),
+        apiPath: '/internal/status-updates/wait-for-approval',
+        // Timeout approval stage after 10 days
+        heartbeatTimeout: Timeout.duration(Duration.days(10)),
+        headers: TaskInput.fromObject({
+          'Content-Type': ['application/json'],
+          TaskToken: JsonPath.taskToken,
+        }),
+        resultPath: '$.lastTaskOutput',
+      },
+    );
+
+    const waitForManualApprovalChain = createUpdateRunStatusTask(
+      Status.AWAITING_APPROVAL,
+    )
+      .next(waitForManualApproval)
+      .next(createUpdateRunStatusTask(Status.IN_PROGRESS))
+      .next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
       .when(Condition.booleanEquals('$.autoDeploy', true), prodChain)
-      .otherwise(waitForManualApproval);
+      .otherwise(waitForManualApprovalChain);
 
     const stagingChain = createStage(
       StageType.DEPLOY_STAGING,
