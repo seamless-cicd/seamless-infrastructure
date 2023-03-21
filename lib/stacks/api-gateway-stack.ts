@@ -10,12 +10,13 @@ import {
   CfnVpcLink,
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
-import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
+import { ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 export interface ApiGatewayStackProps extends NestedStackProps {
   readonly vpc: IVpc;
-  readonly fargate: ApplicationLoadBalancedFargateService;
+  readonly listener: ApplicationListener;
 }
 
 export class ApiGatewayStack extends NestedStack {
@@ -30,8 +31,8 @@ export class ApiGatewayStack extends NestedStack {
       throw new Error('No VPC provided');
     }
 
-    if (!props?.fargate) {
-      throw new Error('No Fargate Service provided');
+    if (!props?.listener) {
+      throw new Error('No ALB HTTP listener provided');
     }
 
     // CORS configuration
@@ -66,7 +67,7 @@ export class ApiGatewayStack extends NestedStack {
         connectionId: vpcLink.attrVpcLinkId,
         connectionType: 'VPC_LINK',
         integrationMethod: 'ANY', // GET, POST, or ANY
-        integrationUri: props.fargate.listener.listenerArn,
+        integrationUri: props.listener.listenerArn,
         payloadFormatVersion: '1.0',
       },
     );
@@ -96,13 +97,6 @@ export class ApiGatewayStack extends NestedStack {
       apiId: this.httpApi.attrApiId,
       routeKey: 'ANY /internal',
       target: `integrations/${integration.ref}`,
-    });
-
-    // Supply the public URL of the API gateway
-    new CfnOutput(this, 'SeamlessApiGatewayUrl', {
-      value: this.httpApi.attrApiEndpoint,
-      description: 'API Gateway URL to access public endpoints',
-      exportName: 'SeamlessApiGatewayUrl',
     });
 
     // Define Websockets API
@@ -238,9 +232,15 @@ export class ApiGatewayStack extends NestedStack {
     websocketsApiDeployment.node.addDependency(connectRoute);
     websocketsApiDeployment.node.addDependency(disconnectRoute);
 
-    // Supply the public URL of the Websockets API
+    // Supply the public URLs of the API gateways
+    new CfnOutput(this, 'SeamlessApiGatewayUrl', {
+      value: this.httpApi.attrApiEndpoint,
+      description: 'API Gateway URL to access public endpoints',
+      exportName: 'SeamlessApiGatewayUrl',
+    });
+
     new CfnOutput(this, 'SeamlessWebsocketsApiGatewayUrl', {
-      value: this.websocketsApi.attrApiEndpoint,
+      value: `https${this.websocketsApi.attrApiEndpoint.slice(3)}/production`,
       description: 'Websockets API Gateway URL to access public endpoints',
       exportName: 'SeamlessWebsocketsApiGatewayUrl',
     });

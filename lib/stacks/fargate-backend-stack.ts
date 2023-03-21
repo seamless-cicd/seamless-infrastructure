@@ -1,14 +1,14 @@
-import { NestedStack, NestedStackProps } from 'aws-cdk-lib';
+import { Fn, NestedStack, NestedStackProps, Stack, Tags } from 'aws-cdk-lib';
 import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
 config();
 
-// To be supplied by the user during setup
 import {
   AWS_ACCOUNT_ID,
   AWS_REGION,
@@ -16,26 +16,30 @@ import {
   GITHUB_CLIENT_SECRET,
 } from '../constants';
 
-export interface EcsBackendStackProps extends NestedStackProps {
+export interface FargateBackendStackProps extends NestedStackProps {
   readonly vpc: IVpc;
+  readonly backendImage: string;
   readonly rdsPassword: string;
   readonly rdsHostname: string;
   readonly rdsPort: number;
   readonly elastiCacheEndpoint: string;
   readonly elastiCachePort: string;
-  readonly backendImage: string;
 }
 
-export class EcsBackendStack extends NestedStack {
+export class FargateBackendStack extends NestedStack {
   readonly cluster: Cluster;
   readonly fargate: ApplicationLoadBalancedFargateService;
 
-  constructor(scope: Construct, id: string, props: EcsBackendStackProps) {
+  constructor(scope: Construct, id: string, props: FargateBackendStackProps) {
     super(scope, id, props);
 
     // Prop validation
     if (!props?.vpc) {
       throw new Error('No VPC provided');
+    }
+
+    if (!props?.backendImage) {
+      throw new Error('No Docker image provided');
     }
 
     if (!props?.rdsPassword) {
@@ -50,22 +54,19 @@ export class EcsBackendStack extends NestedStack {
       throw new Error('No ElastiCache endpoint provided');
     }
 
-    if (!props?.backendImage) {
-      throw new Error('No Docker image provided');
-    }
-
-    // Fargate cluster for Seamless backend server
+    // Fargate Cluster
     this.cluster = new Cluster(this, 'SeamlessBackendCluster', {
+      clusterName: 'SeamlessBackendCluster',
       vpc: props.vpc,
       containerInsights: true,
     });
 
-    const backendServiceImage = ContainerImage.fromRegistry(props.backendImage);
-
+    // Fargate Service
     this.fargate = new ApplicationLoadBalancedFargateService(
       this,
-      'BackendALBFargateService',
+      'SeamlessBackendService',
       {
+        serviceName: 'SeamlessBackendService',
         cluster: this.cluster,
         cpu: 256,
         memoryLimitMiB: 1024,
@@ -79,26 +80,29 @@ export class EcsBackendStack extends NestedStack {
           subnetType: SubnetType.PRIVATE_WITH_EGRESS,
         },
         taskImageOptions: {
-          image: backendServiceImage,
+          image: ContainerImage.fromRegistry(props.backendImage),
           containerPort: 3000,
+          enableLogging: true,
           environment: {
+            AWS_ACCOUNT_ID,
+            AWS_REGION,
+            GITHUB_CLIENT_ID,
+            GITHUB_CLIENT_SECRET,
             BACKEND_PORT: '3000',
             DATABASE_URL: `postgresql://postgres:${props.rdsPassword}@${
               props.rdsHostname
             }:${props.rdsPort || 5432}/seamless_rds?schema=public`,
             REDIS_HOST: props.elastiCacheEndpoint,
             REDIS_PORT: props.elastiCachePort || '6379',
-            // From .env
-            AWS_ACCOUNT_ID,
-            AWS_REGION,
-            GITHUB_CLIENT_ID,
-            GITHUB_CLIENT_SECRET,
+            // BACKEND_URL: Fn.sub('${SeamlessApiGatewayUrl}'),
+            // WEBSOCKETS_API_URL: Fn.sub('${SeamlessWebsocketsApiGatewayUrl}'),
+            // STEP_FUNCTION_ARN: Fn.sub('${SeamlessStateMachineArn}'),
           },
         },
       },
     );
 
-    // Add IAM policy to grant permissions to the Backend (Fargate service)
+    // Add IAM policy to grant permissions to the Backend Fargate service
     const policy = new PolicyStatement({
       effect: Effect.ALLOW,
       actions: [

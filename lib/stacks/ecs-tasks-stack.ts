@@ -1,5 +1,6 @@
 import { Duration, NestedStack, NestedStackProps } from 'aws-cdk-lib';
 import { AdjustmentType, AutoScalingGroup } from 'aws-cdk-lib/aws-autoscaling';
+import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import {
   InstanceClass,
   InstanceSize,
@@ -22,8 +23,6 @@ import {
   ServicePrincipal,
 } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
-
-import { Metric } from 'aws-cdk-lib/aws-cloudwatch';
 import taskDefinitions from './ecs-task-definitions';
 
 export interface EcsTasksStackProps extends NestedStackProps {

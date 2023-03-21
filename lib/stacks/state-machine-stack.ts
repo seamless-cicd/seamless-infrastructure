@@ -5,6 +5,8 @@ import {
   NestedStackProps,
   Stack,
 } from 'aws-cdk-lib';
+import { CfnApi } from 'aws-cdk-lib/aws-apigatewayv2';
+import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import {
   Cluster,
   ContainerDefinition,
@@ -12,6 +14,7 @@ import {
   PlacementStrategy,
 } from 'aws-cdk-lib/aws-ecs';
 import { Topic } from 'aws-cdk-lib/aws-sns';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import {
   Choice,
   Condition,
@@ -23,6 +26,7 @@ import {
   StateMachine,
   Succeed,
   TaskInput,
+  Timeout,
 } from 'aws-cdk-lib/aws-stepfunctions';
 import {
   CallApiGatewayHttpApiEndpoint,
@@ -32,9 +36,6 @@ import {
   SnsPublish,
 } from 'aws-cdk-lib/aws-stepfunctions-tasks';
 import { Construct } from 'constructs';
-
-import { CfnApi } from 'aws-cdk-lib/aws-apigatewayv2';
-import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { randomUUID } from 'crypto';
 
 import { config } from 'dotenv';
@@ -70,6 +71,7 @@ enum Status {
   SUCCESS = 'SUCCESS',
   FAILURE = 'FAILURE',
   IN_PROGRESS = 'IN_PROGRESS',
+  AWAITING_APPROVAL = 'AWAITING_APPROVAL',
   IDLE = 'IDLE',
 }
 
@@ -133,6 +135,17 @@ export class StateMachineStack extends NestedStack {
       );
     };
 
+    const createUpdateRunStatusTask = (status: Status) => {
+      return new Pass(
+        this,
+        `Update state machine context: Run is now ${status}`,
+        {
+          result: Result.fromString(status),
+          resultPath: `$.runStatus.run.status`,
+        },
+      );
+    };
+
     // Status update task
     // Sends entire state machine context to API Gateway (internal route)
     const createUpdateDbStatusTask = () => {
@@ -154,14 +167,7 @@ export class StateMachineStack extends NestedStack {
     };
 
     // Pipeline success tasks
-    const success = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.SUCCESS}`,
-      {
-        result: Result.fromString(Status.SUCCESS),
-        resultPath: `$.runStatus.run.status`,
-      },
-    )
+    const success = createUpdateRunStatusTask(Status.SUCCESS)
       .next(createUpdateDbStatusTask())
       .next(
         createNotificationState('Notify: Pipeline succeeded', {
@@ -172,14 +178,7 @@ export class StateMachineStack extends NestedStack {
       .next(new Succeed(this, 'Pipeline succeeded')); // Terminal state
 
     // Pipeline failure tasks
-    const tasksOnPipelineFailure = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.FAILURE}`,
-      {
-        result: Result.fromString(Status.FAILURE),
-        resultPath: `$.runStatus.run.status`,
-      },
-    )
+    const tasksOnPipelineFailure = createUpdateRunStatusTask(Status.FAILURE)
       .next(createUpdateDbStatusTask())
       .next(
         createNotificationState(`Notify: Pipeline failed`, {
@@ -338,15 +337,50 @@ export class StateMachineStack extends NestedStack {
       props.deployProdTaskDefinition,
     ).next(success);
 
-    // Placeholder; replace with Lambda
-    const waitForManualApproval = new Pass(
+    const waitForManualApproval = new CallApiGatewayHttpApiEndpoint(
       this,
       'Wait for manual approval of Staging environment',
-    ).next(prodChain);
+      {
+        apiId: props.httpApi.attrApiId,
+        apiStack: Stack.of(props.httpApi),
+        method: HttpMethod.POST,
+        integrationPattern: IntegrationPattern.WAIT_FOR_TASK_TOKEN,
+        // Pass task token and runId to backend to hold onto
+        requestBody: TaskInput.fromObject({
+          taskToken: JsonPath.taskToken,
+          runId: JsonPath.stringAt('$.runStatus.run.id'),
+        }),
+        apiPath: '/internal/status-updates/wait-for-approval',
+        // Timeout approval stage after 10 days
+        heartbeatTimeout: Timeout.duration(Duration.days(10)),
+        headers: TaskInput.fromObject({
+          'Content-Type': ['application/json'],
+          TaskToken: JsonPath.array(JsonPath.taskToken),
+        }),
+        resultPath: '$.lastTaskOutput',
+      },
+    );
+
+    const waitForManualApprovalChain = createUpdateRunStatusTask(
+      Status.AWAITING_APPROVAL,
+    )
+      .next(waitForManualApproval)
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run has resumed and it now ${Status.IN_PROGRESS}`,
+          {
+            result: Result.fromString(Status.IN_PROGRESS),
+            resultPath: `$.runStatus.run.status`,
+          },
+        ),
+      )
+      // .next(createUpdateRunStatusTask(Status.IN_PROGRESS))
+      .next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
       .when(Condition.booleanEquals('$.autoDeploy', true), prodChain)
-      .otherwise(waitForManualApproval);
+      .otherwise(waitForManualApprovalChain);
 
     const stagingChain = createStage(
       StageType.DEPLOY_STAGING,
@@ -366,14 +400,7 @@ export class StateMachineStack extends NestedStack {
       .when(Condition.booleanEquals('$.runFull', true), buildChain)
       .otherwise(success);
 
-    const definition = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.IN_PROGRESS}`,
-      {
-        result: Result.fromString(Status.IN_PROGRESS),
-        resultPath: `$.runStatus.run.status`,
-      },
-    )
+    const definition = createUpdateRunStatusTask(Status.IN_PROGRESS)
       .next(
         createNotificationState('Notify: Pipeline started', {
           stageStatus: Status.IN_PROGRESS,
@@ -393,10 +420,10 @@ export class StateMachineStack extends NestedStack {
       timeout: Duration.minutes(60),
     });
 
-    // Supply the public URL of the API gateway
+    // Supply the ARN of the state machine
     new CfnOutput(this, 'SeamlessStateMachineArn', {
       value: this.stateMachine.stateMachineArn,
-      description: 'State machine ARN for the backend to reference',
+      description: 'State machine ARN',
       exportName: 'SeamlessStateMachineArn',
     });
   }

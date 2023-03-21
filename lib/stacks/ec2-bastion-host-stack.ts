@@ -1,23 +1,23 @@
 // import * as path from 'path';
-import { NestedStack, NestedStackProps, Aspects, Tag } from 'aws-cdk-lib';
+import { Aspects, NestedStack, NestedStackProps, Tag } from 'aws-cdk-lib';
 import {
-  IVpc,
+  AmazonLinuxCpuType,
+  AmazonLinuxGeneration,
+  AmazonLinuxImage,
+  BlockDeviceVolume,
+  CfnKeyPair,
   Instance,
-  InstanceType,
   InstanceClass,
   InstanceSize,
-  AmazonLinuxImage,
-  AmazonLinuxGeneration,
-  AmazonLinuxCpuType,
-  BlockDeviceVolume,
-  SecurityGroup,
-  CfnKeyPair,
+  InstanceType,
+  IVpc,
   Peer,
   Port,
+  SecurityGroup,
   SubnetType,
 } from 'aws-cdk-lib/aws-ec2';
 // import { Asset } from 'aws-cdk-lib/aws-s3-assets';
-import { Role, ServicePrincipal, ManagedPolicy } from 'aws-cdk-lib/aws-iam';
+import { ManagedPolicy, Role, ServicePrincipal } from 'aws-cdk-lib/aws-iam';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
@@ -50,17 +50,17 @@ export class Ec2BastionHostStack extends NestedStack {
         vpc: props.vpc,
         description: 'EC2 bastion host instance security group',
         allowAllOutbound: true,
-      }
+      },
     );
 
     Aspects.of(this.ec2BastionHostSecurityGroup).add(
-      new Tag('Name', 'SeamlessEc2BastionHostSecurityGroup')
+      new Tag('Name', 'SeamlessEc2BastionHostSecurityGroup'),
     );
 
     this.ec2BastionHostSecurityGroup.addIngressRule(
       Peer.anyIpv4(),
       Port.tcp(22),
-      'Allow SSH access'
+      'Allow SSH access',
     );
 
     // Create IAM Role
@@ -101,7 +101,7 @@ export class Ec2BastionHostStack extends NestedStack {
     });
 
     Aspects.of(this.ec2BastionHost).add(
-      new Tag('Name', 'SeamlessEc2BastionHost')
+      new Tag('Name', 'SeamlessEc2BastionHost'),
     );
 
     // Upload initialization script to S3 and execute
