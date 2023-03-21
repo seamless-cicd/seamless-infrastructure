@@ -1,11 +1,12 @@
 import { Stack, StackProps } from 'aws-cdk-lib';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 import { ApiGatewayStack } from './stacks/api-gateway-stack';
 import { Ec2BastionHostStack } from './stacks/ec2-bastion-host-stack';
-import { EcsBackendClusterStack } from './stacks/ecs-backend-cluster-stack';
 import { EcsTasksStack } from './stacks/ecs-tasks-stack';
 import { EfsStack } from './stacks/efs-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
+import { FargateBackendStack } from './stacks/fargate-backend-stack';
 import { FargateWithServiceConnectStack } from './stacks/fargate-service-connect-stack';
 import { UpdateBackendEnvVarsLambdaStack } from './stacks/lambda-update-backend-env-vars';
 import { RdsStack } from './stacks/rds-stack';
@@ -91,8 +92,21 @@ export class SeamlessStack extends Stack {
     );
     stagingStack.addDependency(vpcStack);
 
-    // Fargate Cluster
-    const ecsBackendClusterStack = new EcsBackendClusterStack(
+    // Backend Fargate Cluster
+    // const backendUrl = new StringParameter(this, 'BACKEND_URL', {
+    //   parameterName: 'BACKEND_URL',
+    //   stringValue: '',
+    // });
+    // const wsUrl = new StringParameter(this, 'WEBSOCKETS_API_URL', {
+    //   parameterName: 'WEBSOCKETS_API_URL',
+    //   stringValue: '',
+    // });
+    // const sfnArn = new StringParameter(this, 'STEP_FUNCTION_ARN', {
+    //   parameterName: 'STEP_FUNCTION_ARN',
+    //   stringValue: '',
+    // });
+
+    const fargateBackendStack = new FargateBackendStack(
       this,
       'SeamlessBackendCluster',
       {
@@ -109,17 +123,17 @@ export class SeamlessStack extends Stack {
           elastiCacheStack.elastiCacheCluster.attrRedisEndpointPort, // string
       },
     );
-    ecsBackendClusterStack.addDependency(vpcStack);
-    ecsBackendClusterStack.addDependency(rdsStack);
-    ecsBackendClusterStack.addDependency(elastiCacheStack);
+    fargateBackendStack.addDependency(vpcStack);
+    fargateBackendStack.addDependency(rdsStack);
+    fargateBackendStack.addDependency(elastiCacheStack);
 
     // HTTP and WebSocket API Gateways
     const apiGatewayStack = new ApiGatewayStack(this, 'SeamlessApiGateway', {
       vpc: vpcStack.vpc,
-      listener: ecsBackendClusterStack.listener,
+      listener: fargateBackendStack.fargate.listener,
     });
     // API Gateway needs to know the Backend's ALB Fargate listener ARN
-    apiGatewayStack.addDependency(ecsBackendClusterStack);
+    apiGatewayStack.addDependency(fargateBackendStack);
 
     // ECS
     const ecsTasksStack = new EcsTasksStack(this, 'SeamlessEcs', {
@@ -155,11 +169,9 @@ export class SeamlessStack extends Stack {
       },
     );
 
-    stateMachineStack.addDependency(vpcStack);
     stateMachineStack.addDependency(snsStack);
     stateMachineStack.addDependency(ecsTasksStack);
-    stateMachineStack.addDependency(rdsStack);
-    stateMachineStack.addDependency(ecsBackendClusterStack);
+    stateMachineStack.addDependency(fargateBackendStack);
     stateMachineStack.addDependency(apiGatewayStack);
 
     // Lambda to update Backend Task Definition with new identifiers

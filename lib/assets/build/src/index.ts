@@ -3,7 +3,6 @@ dotenv.config();
 
 import fs from 'fs-extra';
 import path from 'path';
-import { execaCommand } from 'execa';
 import {
   ECRClient,
   GetAuthorizationTokenCommand,
@@ -57,10 +56,9 @@ async function buildAndPushImage(): Promise<void> {
     process.exit(1);
   }
 
-  // Tag image with both the commit hash and "latest"
+  // Tag image with the commit hash
   const fullEcrRepo = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${repoPath}`;
   const fullEcrTag = `${fullEcrRepo}:${COMMIT_HASH}`;
-  const fullEcrTagLatest = `${fullEcrRepo}:latest`;
 
   // Build and tag Docker images
   try {
@@ -68,14 +66,7 @@ async function buildAndPushImage(): Promise<void> {
 
     const buildProcess = await createLoggedProcess(
       'docker',
-      [
-        'build',
-        '-t',
-        fullEcrTag,
-        '-t',
-        fullEcrTagLatest,
-        path.join(WORKING_DIR, DOCKERFILE_PATH),
-      ],
+      ['build', '-t', fullEcrTag, path.join(WORKING_DIR, DOCKERFILE_PATH)],
       {},
       LOG_SUBSCRIBER_URL,
       { stageId: STAGE_ID },
@@ -176,23 +167,6 @@ async function buildAndPushImage(): Promise<void> {
       await log(`Push ${repoPath}:${COMMIT_HASH} succeeded`);
     } else {
       await logger.emit(`Push ${repoPath}:${COMMIT_HASH} failed`, 'stderr', {
-        stageId: STAGE_ID,
-      });
-      process.exit(1);
-    }
-
-    const pushLatestToEcrProcess = await createLoggedProcess(
-      'docker',
-      ['push', fullEcrTagLatest],
-      {},
-      LOG_SUBSCRIBER_URL,
-      { stageId: STAGE_ID },
-    );
-
-    if (pushLatestToEcrProcess.exitCode === 0) {
-      await log(`Push ${repoPath}:latest succeeded`);
-    } else {
-      await logger.emit(`Push ${repoPath}:latest failed`, 'stderr', {
         stageId: STAGE_ID,
       });
       process.exit(1);

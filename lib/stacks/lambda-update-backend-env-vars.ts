@@ -4,11 +4,11 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
 import { Code, Function, Runtime } from 'aws-cdk-lib/aws-lambda';
 import { Construct } from 'constructs';
 import { ApiGatewayStack } from './api-gateway-stack';
-import { EcsBackendClusterStack } from './ecs-backend-cluster-stack';
+import { FargateBackendStack } from './fargate-backend-stack';
 import { StateMachineStack } from './state-machine-stack';
 
 export interface UpdateBackendEnvVarsLambdaStackProps extends NestedStackProps {
-  readonly ecsBackendClusterStack: EcsBackendClusterStack;
+  readonly fargateBackendStack: FargateBackendStack;
   readonly apiGatewayStack: ApiGatewayStack;
   readonly stateMachineStack: StateMachineStack;
 }
@@ -31,7 +31,7 @@ export class UpdateBackendEnvVarsLambdaStack extends NestedStack {
         environment: {
           SERVICE_NAME: 'SeamlessBackendService',
           TASK_DEFINITION_FAMILY:
-            props.ecsBackendClusterStack.fargate.taskDefinition.family,
+            props.fargateBackendStack.fargate.taskDefinition.family,
           // SECRET_ARN: secret.secretArn,
           BACKEND_URL: props.apiGatewayStack.httpApi.attrApiEndpoint,
           WEBSOCKETS_API_URL: `https${props.apiGatewayStack.websocketsApi.attrApiEndpoint.slice(

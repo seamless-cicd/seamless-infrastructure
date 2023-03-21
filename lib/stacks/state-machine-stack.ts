@@ -14,6 +14,7 @@ import {
   PlacementStrategy,
 } from 'aws-cdk-lib/aws-ecs';
 import { Topic } from 'aws-cdk-lib/aws-sns';
+import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import {
   Choice,
   Condition,
@@ -166,14 +167,7 @@ export class StateMachineStack extends NestedStack {
     };
 
     // Pipeline success tasks
-    const success = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.SUCCESS}`,
-      {
-        result: Result.fromString(Status.SUCCESS),
-        resultPath: `$.runStatus.run.status`,
-      },
-    )
+    const success = createUpdateRunStatusTask(Status.SUCCESS)
       .next(createUpdateDbStatusTask())
       .next(
         createNotificationState('Notify: Pipeline succeeded', {
@@ -184,14 +178,7 @@ export class StateMachineStack extends NestedStack {
       .next(new Succeed(this, 'Pipeline succeeded')); // Terminal state
 
     // Pipeline failure tasks
-    const tasksOnPipelineFailure = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.FAILURE}`,
-      {
-        result: Result.fromString(Status.FAILURE),
-        resultPath: `$.runStatus.run.status`,
-      },
-    )
+    const tasksOnPipelineFailure = createUpdateRunStatusTask(Status.FAILURE)
       .next(createUpdateDbStatusTask())
       .next(
         createNotificationState(`Notify: Pipeline failed`, {
@@ -361,14 +348,14 @@ export class StateMachineStack extends NestedStack {
         // Pass task token and runId to backend to hold onto
         requestBody: TaskInput.fromObject({
           taskToken: JsonPath.taskToken,
-          runId: '$.runStatus.run.id',
+          runId: JsonPath.stringAt('$.runStatus.run.id'),
         }),
         apiPath: '/internal/status-updates/wait-for-approval',
         // Timeout approval stage after 10 days
         heartbeatTimeout: Timeout.duration(Duration.days(10)),
         headers: TaskInput.fromObject({
           'Content-Type': ['application/json'],
-          TaskToken: JsonPath.taskToken,
+          TaskToken: JsonPath.array(JsonPath.taskToken),
         }),
         resultPath: '$.lastTaskOutput',
       },
@@ -378,7 +365,17 @@ export class StateMachineStack extends NestedStack {
       Status.AWAITING_APPROVAL,
     )
       .next(waitForManualApproval)
-      .next(createUpdateRunStatusTask(Status.IN_PROGRESS))
+      .next(
+        new Pass(
+          this,
+          `Update state machine context: Run has resumed and it now ${Status.IN_PROGRESS}`,
+          {
+            result: Result.fromString(Status.IN_PROGRESS),
+            resultPath: `$.runStatus.run.status`,
+          },
+        ),
+      )
+      // .next(createUpdateRunStatusTask(Status.IN_PROGRESS))
       .next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
@@ -403,14 +400,7 @@ export class StateMachineStack extends NestedStack {
       .when(Condition.booleanEquals('$.runFull', true), buildChain)
       .otherwise(success);
 
-    const definition = new Pass(
-      this,
-      `Update state machine context: Run is now ${Status.IN_PROGRESS}`,
-      {
-        result: Result.fromString(Status.IN_PROGRESS),
-        resultPath: `$.runStatus.run.status`,
-      },
-    )
+    const definition = createUpdateRunStatusTask(Status.IN_PROGRESS)
       .next(
         createNotificationState('Notify: Pipeline started', {
           stageStatus: Status.IN_PROGRESS,
