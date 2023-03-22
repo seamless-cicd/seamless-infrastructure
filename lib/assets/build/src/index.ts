@@ -60,7 +60,7 @@ async function buildAndPushImage(): Promise<void> {
   const fullEcrRepo = `${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${repoPath}`;
   const fullEcrTag = `${fullEcrRepo}:${COMMIT_HASH}`;
 
-  // Build and tag Docker images
+  // Build and tag Docker image
   try {
     await log(`Building Docker image`);
 

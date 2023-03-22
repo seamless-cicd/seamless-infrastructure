@@ -8,7 +8,6 @@ import { EfsStack } from './stacks/efs-stack';
 import { ElastiCacheStack } from './stacks/elasticache-stack';
 import { FargateBackendStack } from './stacks/fargate-backend-stack';
 import { FargateWithServiceConnectStack } from './stacks/fargate-service-connect-stack';
-import { UpdateBackendEnvVarsLambdaStack } from './stacks/lambda-update-backend-env-vars';
 import { RdsStack } from './stacks/rds-stack';
 import { SnsStack } from './stacks/sns-stack';
 import { StateMachineStack } from './stacks/state-machine-stack';
@@ -93,19 +92,6 @@ export class SeamlessStack extends Stack {
     stagingStack.addDependency(vpcStack);
 
     // Backend Fargate Cluster
-    // const backendUrl = new StringParameter(this, 'BACKEND_URL', {
-    //   parameterName: 'BACKEND_URL',
-    //   stringValue: '',
-    // });
-    // const wsUrl = new StringParameter(this, 'WEBSOCKETS_API_URL', {
-    //   parameterName: 'WEBSOCKETS_API_URL',
-    //   stringValue: '',
-    // });
-    // const sfnArn = new StringParameter(this, 'STEP_FUNCTION_ARN', {
-    //   parameterName: 'STEP_FUNCTION_ARN',
-    //   stringValue: '',
-    // });
-
     const fargateBackendStack = new FargateBackendStack(
       this,
       'SeamlessBackendCluster',
@@ -149,7 +135,7 @@ export class SeamlessStack extends Stack {
     const snsStack = new SnsStack(this, 'SeamlessSns');
     snsStack.addDependency(apiGatewayStack);
 
-    // State machine
+    // State machine (Step Function)
     const stateMachineStack = new StateMachineStack(
       this,
       'SeamlessStateMachine',
@@ -173,16 +159,5 @@ export class SeamlessStack extends Stack {
     stateMachineStack.addDependency(ecsTasksStack);
     stateMachineStack.addDependency(fargateBackendStack);
     stateMachineStack.addDependency(apiGatewayStack);
-
-    // Lambda to update Backend Task Definition with new identifiers
-    // const updateBackendEnvVarsLambdaStack = new UpdateBackendEnvVarsLambdaStack(
-    //   this,
-    //   'UpdateBackendEnvVarsLambdaStack',
-    //   {
-    //     ecsBackendClusterStack,
-    //     apiGatewayStack,
-    //     stateMachineStack,
-    //   },
-    // );
   }
 }

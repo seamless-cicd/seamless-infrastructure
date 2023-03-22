@@ -49,9 +49,9 @@ async function runUnitTests(): Promise<void> {
     );
 
     if (codeQualityProcess.exitCode === 0) {
-      await log('Unit test check succeeded');
+      await log('Unit tests passed');
     } else {
-      await log('Unit test check failed');
+      await log('Unit tests failed');
     }
   } catch (error) {
     await handleProcessError(error, LOG_SUBSCRIBER_URL, { stageId: STAGE_ID });

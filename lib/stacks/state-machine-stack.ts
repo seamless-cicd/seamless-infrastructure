@@ -14,7 +14,6 @@ import {
   PlacementStrategy,
 } from 'aws-cdk-lib/aws-ecs';
 import { Topic } from 'aws-cdk-lib/aws-sns';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import {
   Choice,
   Condition,
@@ -258,6 +257,7 @@ export class StateMachineStack extends NestedStack {
                 name: 'AWS_ACCOUNT_ID',
                 value: JsonPath.stringAt('$.containerVariables.awsAccountId'),
               },
+              // GitHub variables for Prepare Stage
               {
                 name: 'GITHUB_OAUTH_TOKEN',
                 value: JsonPath.stringAt(
@@ -272,6 +272,7 @@ export class StateMachineStack extends NestedStack {
                 name: 'COMMIT_HASH',
                 value: JsonPath.stringAt('$.containerVariables.commitHash'),
               },
+              // Code Quality and Unit Test Stage variables
               {
                 name: 'CODE_QUALITY_COMMAND',
                 value: JsonPath.stringAt(
@@ -284,10 +285,37 @@ export class StateMachineStack extends NestedStack {
                   '$.containerVariables.unitTestCommand',
                 ),
               },
+              // Build Stage
               {
                 name: 'DOCKERFILE_PATH',
                 value: JsonPath.stringAt('$.containerVariables.dockerfilePath'),
               },
+              // Integration test variables
+              {
+                name: 'GITHUB_INTEGRATION_TEST_REPO_URL',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.githubIntegrationTestRepoUrl',
+                ),
+              },
+              {
+                name: 'DOCKER_COMPOSE_FILE_PATH',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.dockerComposeFilePath',
+                ),
+              },
+              {
+                name: 'DOCKER_COMPOSE_SERVICE_NAME',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.dockerComposeServiceName',
+                ),
+              },
+              {
+                name: 'DOCKER_COMPOSE_INTEGRATION_TEST_SERVICE_NAME',
+                value: JsonPath.stringAt(
+                  '$.containerVariables.dockerComposeIntegrationTestServiceName',
+                ),
+              },
+              // ECS variables
               {
                 name: 'AWS_ECS_CLUSTER_STAGING',
                 value: JsonPath.stringAt(
@@ -391,10 +419,22 @@ export class StateMachineStack extends NestedStack {
       .when(Condition.booleanEquals('$.useStaging', true), stagingChain)
       .otherwise(prodChain);
 
+    const integrationTestChain = createStage(
+      StageType.INTEGRATION_TEST,
+      props.integrationTestTaskDefinition,
+    ).next(stagingChoice);
+
+    const integrationTestChoice = new Choice(this, 'Run integration test?')
+      .when(
+        Condition.booleanEquals('$.runIntegrationTest', true),
+        integrationTestChain,
+      )
+      .otherwise(stagingChoice);
+
     const buildChain = createStage(
       StageType.BUILD,
       props.buildTaskDefinition,
-    ).next(stagingChoice);
+    ).next(integrationTestChoice);
 
     const fullPipelineChoice = new Choice(this, 'Run full pipeline?')
       .when(Condition.booleanEquals('$.runFull', true), buildChain)

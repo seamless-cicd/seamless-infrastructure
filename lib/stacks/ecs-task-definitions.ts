@@ -9,6 +9,7 @@ import {
   Scope,
 } from 'aws-cdk-lib/aws-ecs';
 import { PolicyStatement } from 'aws-cdk-lib/aws-iam';
+import { capitalize, pascalToKebab } from '../utils/utils';
 
 import { config } from 'dotenv';
 config();
@@ -40,37 +41,32 @@ const createDockerVolumeConfig = (
 // Task definition template
 const create = (
   ecsTasksStack: NestedStack,
-  stageName: string,
-  taskDefinitionId: string,
+  id: string,
   efsDnsName: string,
   logSubscriberUrl: string,
   taskRolePolicyStatement: PolicyStatement,
 ) => {
-  const taskDefinition = new Ec2TaskDefinition(
-    ecsTasksStack,
-    taskDefinitionId,
-    {
-      family: `SeamlessExecutor${taskDefinitionId}`,
-      networkMode: NetworkMode.BRIDGE,
-    },
-  );
+  // Convert PascalCase to kebab-case, e.g. CodeQuality -> code-quality
+  const idKebab = pascalToKebab(id);
+
+  const taskDefinition = new Ec2TaskDefinition(ecsTasksStack, id, {
+    family: `SeamlessExecutor${id}`,
+    networkMode: NetworkMode.BRIDGE,
+  });
   taskDefinition.addToTaskRolePolicy(taskRolePolicyStatement);
 
   // Add application container
-  const container = taskDefinition.addContainer(
-    `SeamlessExecutor${taskDefinitionId}`,
-    {
-      image: ContainerImage.fromAsset(`./lib/assets/${stageName}`),
-      cpu: 256,
-      memoryLimitMiB: 512,
-      logging: new AwsLogDriver({
-        streamPrefix: `SeamlessExecutor${taskDefinitionId}`,
-      }),
-      environment: {
-        LOG_SUBSCRIBER_URL: logSubscriberUrl,
-      },
+  const container = taskDefinition.addContainer(`SeamlessExecutor${id}`, {
+    image: ContainerImage.fromAsset(`./lib/assets/${idKebab}`),
+    cpu: 256,
+    memoryLimitMiB: 512,
+    logging: new AwsLogDriver({
+      streamPrefix: `SeamlessExecutor${id}`,
+    }),
+    environment: {
+      LOG_SUBSCRIBER_URL: logSubscriberUrl,
     },
-  );
+  });
 
   if (efsDnsName) {
     // Add shared Docker volume
@@ -86,16 +82,16 @@ const create = (
 };
 
 // Build stage: Uses above template, plus an additional bind mount for Docker-in-Docker
-const createBuildTaskDefinition = (
+const createDockerInDocker = (
   ecsTasksStack: NestedStack,
+  id: string,
   efsDnsName: string,
   logSubscriberUrl: string,
   taskRolePolicyStatement: PolicyStatement,
 ) => {
   const { taskDefinition, container } = create(
     ecsTasksStack,
-    'build',
-    'Build',
+    id,
     efsDnsName,
     logSubscriberUrl,
     taskRolePolicyStatement,
@@ -122,5 +118,5 @@ const createBuildTaskDefinition = (
 
 export default {
   create,
-  createBuildTaskDefinition,
+  createDockerInDocker,
 };
