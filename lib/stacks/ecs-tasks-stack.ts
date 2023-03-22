@@ -138,14 +138,12 @@ export class EcsTasksStack extends NestedStack {
 
     // Generator for task definitions
     const createTaskDefinition = (
-      stageName: string, // kebab-cased name
-      taskDefinitionId: string, // PascalCased name
+      id: string, // PascalCased name
       useEfs = true,
     ) => {
       return taskDefinitions.create(
         this,
-        stageName,
-        taskDefinitionId,
+        id,
         useEfs ? efsDnsName : '',
         props.logSubscriberUrl,
         taskRolePolicyStatement,
@@ -153,33 +151,34 @@ export class EcsTasksStack extends NestedStack {
     };
 
     // Executor task definitions
-    this.prepareTaskDefinition = createTaskDefinition('prepare', 'Prepare');
+    this.prepareTaskDefinition = createTaskDefinition('Prepare');
 
-    this.codeQualityTaskDefinition = createTaskDefinition(
-      'code-quality',
-      'CodeQuality',
+    this.codeQualityTaskDefinition = createTaskDefinition('CodeQuality');
+
+    this.unitTestTaskDefinition = createTaskDefinition('UnitTest');
+
+    // Build and Integration Test executors require customization
+    this.buildTaskDefinition = taskDefinitions.createDockerInDocker(
+      this,
+      'Build',
+      efsDnsName,
+      props.logSubscriberUrl,
+      taskRolePolicyStatement,
     );
 
-    this.unitTestTaskDefinition = createTaskDefinition('unit-test', 'UnitTest');
-
-    // Build executor requires customization
-    this.buildTaskDefinition = taskDefinitions.createBuildTaskDefinition(
+    this.integrationTestTaskDefinition = taskDefinitions.createDockerInDocker(
       this,
+      'IntegrationTest',
       efsDnsName,
       props.logSubscriberUrl,
       taskRolePolicyStatement,
     );
 
     this.deployStagingTaskDefinition = createTaskDefinition(
-      'deploy-staging',
       'DeployStaging',
       false,
     );
 
-    this.deployProdTaskDefinition = createTaskDefinition(
-      'deploy-prod',
-      'DeployProd',
-      false,
-    );
+    this.deployProdTaskDefinition = createTaskDefinition('DeployProd', false);
   }
 }
