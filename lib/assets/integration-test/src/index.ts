@@ -47,7 +47,7 @@ async function runIntegrationTests(): Promise<void> {
   try {
     await log(`Cloning integration test source code`);
 
-    await fs.emptyDir(INTEGRATION_TEST_WORKING_DIR);
+    await fs.rmdirSync(INTEGRATION_TEST_WORKING_DIR, { recursive: true });
 
     const cloneProcess = await createLoggedProcess(
       'git',

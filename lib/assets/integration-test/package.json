@@ -1,12 +1,13 @@
 {
-  "name": "seamless-integration-test-executor",
+  "name": "seamless-integration-test",
   "version": "0.0.1",
   "author": "Seamless CI/CD",
   "license": "ISC",
   "description": "Seamless CI/CD Pipeline - Integration Test Stage",
   "type": "module",
   "scripts": {
-    "build": "tsc"
+    "build": "tsc",
+    "lint": "eslint src/**/*.ts"
   },
   "dependencies": {
     "@aws-sdk/client-ecr": "^3.282.0",
