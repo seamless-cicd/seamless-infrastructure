@@ -392,18 +392,18 @@ export class StateMachineStack extends NestedStack {
     const waitForManualApprovalChain = createUpdateRunStatusTask(
       Status.AWAITING_APPROVAL,
     )
+      .next(createUpdateDbStatusTask())
       .next(waitForManualApproval)
       .next(
         new Pass(
           this,
-          `Update state machine context: Run has resumed and it now ${Status.IN_PROGRESS}`,
+          `Update state machine context: Run has resumed and it is now ${Status.IN_PROGRESS}`,
           {
             result: Result.fromString(Status.IN_PROGRESS),
             resultPath: `$.runStatus.run.status`,
           },
         ),
       )
-      // .next(createUpdateRunStatusTask(Status.IN_PROGRESS))
       .next(prodChain);
 
     const autoDeployChoice = new Choice(this, 'Auto deploy to Prod?')
