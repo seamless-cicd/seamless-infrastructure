@@ -8,7 +8,9 @@ const envSchema = z.object({
   AWS_REGION: z.string(),
   GITHUB_CLIENT_ID: z.string(),
   GITHUB_CLIENT_SECRET: z.string(),
-  SNS_SUBSCRIBER_URL: z.string().url(),
+  SNS_SUBSCRIBER_URL: z.string().url().optional(),
+  EMAIL_ADDRESS: z.string().email().optional(),
+  SLACK_WEBHOOK_URL: z.string().optional(),
 });
 
 export type EnvVars = z.infer<typeof envSchema>;
@@ -29,4 +31,6 @@ export const {
   GITHUB_CLIENT_ID,
   GITHUB_CLIENT_SECRET,
   SNS_SUBSCRIBER_URL,
+  EMAIL_ADDRESS,
+  SLACK_WEBHOOK_URL,
 } = parsedEnv.data;
