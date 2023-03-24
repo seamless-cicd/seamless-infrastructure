@@ -2,7 +2,7 @@
   "name": "seamless",
   "version": "0.1.0",
   "bin": {
-    "seamless": "CLI/cli.js"
+    "seamless": "cli/cli.js"
   },
   "scripts": {
     "build": "tsc",
@@ -40,7 +40,7 @@
     "aws-cdk-lib": "^2.64.0",
     "aws-lambda": "^1.0.7",
     "aws-sdk": "^2.1328.0",
-    "chalk": "^5.2.0",
+    "chalk": "4.1.2",
     "child_process": "^1.0.2",
     "commander": "^10.0.0",
     "constructs": "^10.0.0",

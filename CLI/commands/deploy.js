@@ -1,11 +1,9 @@
-import { init, arrowText, checkmarkText } from './init.js';
-import { exec } from 'child_process';
+const { exec } = require('child_process');
+const { arrowText, checkmarkText } = require('../utils.js');
 
 const CDK_DEPLOY = 'cdk deploy';
 
 const deploy = () => {
-  init();
-
   exec(CDK_DEPLOY, (err, stdout, stderr) => {
     if (err) {
       console.error(err);
@@ -16,7 +14,6 @@ const deploy = () => {
     arrowText('Seamless Deploy:', 'with AWS CDK', `${stdout}`);
     checkmarkText('Seamless Deploy:', 'complete');
   });
-
 };
 
-export default deploy;
+module.exports = { deploy };
