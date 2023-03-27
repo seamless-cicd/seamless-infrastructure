@@ -1,19 +1,26 @@
-const { exec } = require('child_process');
 const { arrowText, checkmarkText } = require('../utils.js');
 
-const CDK_DEPLOY = 'cdk deploy';
+const API_GATEWAY_TEXT = 'API Gateway URL: ';
 
-const deploy = () => {
-  exec(CDK_DEPLOY, (err, stdout, stderr) => {
-    if (err) {
-      console.error(err);
-      console.error(`stderr: ${stderr}`);
-      return;
+const deploy = async () => {
+  const { execa } = await require('../esmodules.js')();
+  arrowText('Deploying Seamless:', 'with AWS CDK');
+
+  const childProcess = execa('sh', ['cli/test.sh']).pipeStdout(process.stdout);
+  let apiGatewayUrl;
+
+  childProcess.stdout.on('data', (data) => {
+    const string = data.toString().trim();
+    if (string.match(API_GATEWAY_TEXT)) {
+      const urlStart = string.indexOf(':') + 2;
+      apiGatewayUrl = string.slice(urlStart);
     }
-
-    arrowText('Seamless Deploy:', 'with AWS CDK', `${stdout}`);
-    checkmarkText('Seamless Deploy:', 'complete');
   });
+
+  arrowText('Seamless Deploy:', 'with AWS CDK');
+  await childProcess;
+  checkmarkText('Seamless Deploy:', 'complete');
+  arrowText("Here's the link to your Seamless Dashboard:", apiGatewayUrl);
 };
 
 module.exports = { deploy };

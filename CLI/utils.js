@@ -13,7 +13,7 @@ const checkmarkText = (text1, text2) => {
   );
 };
 
-const logo = `
+const logo = chalk.blue(`
                   (((((((((      
           (((((((((((((((((      
       (((((((                   
@@ -27,6 +27,6 @@ const logo = `
                     (((((((   
       (((((((((((((((((
       (((((((((    
-`;
+`);
 
 module.exports = { arrowText, checkmarkText, logo };

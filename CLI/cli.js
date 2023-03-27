@@ -3,6 +3,7 @@
 const commander = require('commander');
 const { deploy } = require('./commands/deploy.js');
 const { init } = require('./commands/init.js');
+const { teardown } = require('./commands/teardown.js');
 
 const program = new commander.Command();
 
@@ -17,17 +18,16 @@ program
 program
   .command('deploy')
   .alias('d')
-  .description("Deploy the user's infrastructure to their AWS account")
+  .description("Deploy Seamless's AWS infrastructure.")
   .action(deploy);
 
 // teardown: Destroy the user's infrastructure
-// program
-//   .command('teardown')
-//   .alias('t')
-//   .description('init .env file and deploy infra using cdk deploy')
-//   .action(deploy);
+program
+  .command('teardown')
+  .alias('t')
+  .description("Destroy Seamless's AWS infrastructure.")
+  .action(teardown);
 
-// // help
 // program
 //   .command('help')
 //   .description('init .env file and deploy infra using cdk deploy')

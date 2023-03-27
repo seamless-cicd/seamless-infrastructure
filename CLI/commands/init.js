@@ -1,13 +1,11 @@
-const chalk = require('chalk');
-const { exec } = require('child_process');
 const fs = require('fs');
 const readlineSync = require('readline-sync');
 const { logo, arrowText, checkmarkText } = require('../utils.js');
 const z = require('zod');
 
-const CDK_BOOTSTRAP = 'cdk bootstrap';
+const question = async (text) => {
+  const { chalk } = await require('../esmodules.js')();
 
-const question = (text) => {
   const boldText = `${chalk.bold(`${text}: `)}`;
   const answer = readlineSync.question(boldText);
   return answer;
@@ -23,14 +21,14 @@ const envSchema = z.object({
   SLACK_WEBHOOK_URL: z.string().url().optional(),
 });
 
-const getEnvVariables = () => {
-  const awsAccountId = question('AWS Account ID');
-  const awsRegion = question('AWS Region');
-  const githubClientId = question('GitHub Client Id');
-  const githubClientSecret = question('GitHub Client Secret');
-  const snsSubscriberUrl = question('SNS Subscriber URL (Optional)');
-  const emailAddress = question('Email Address (Optional)');
-  const slackWebhookUrl = question('Slack Webhook URL (Optional)');
+const getEnvVariables = async () => {
+  const awsAccountId = await question('AWS Account ID');
+  const awsRegion = await question('AWS Region');
+  const githubClientId = await question('GitHub Client Id');
+  const githubClientSecret = await question('GitHub Client Secret');
+  const snsSubscriberUrl = await question('SNS Subscriber URL (Optional)');
+  const emailAddress = await question('Email Address (Optional)');
+  const slackWebhookUrl = await question('Slack Webhook URL (Optional)');
 
   const envVariables = {
     AWS_ACCOUNT_ID: awsAccountId,
@@ -54,7 +52,8 @@ const getEnvVariables = () => {
   return envVariables;
 };
 
-const validEnvironment = (envVariables) => {
+const validEnvironment = async (envVariables) => {
+  const { chalk } = await require('../esmodules.js')();
   const dimmedText = `${chalk.dim('\nValidating Input...')}`;
   console.log(dimmedText);
 
@@ -66,28 +65,32 @@ const validEnvironment = (envVariables) => {
     return false;
   }
 
+  const boldText = `${chalk.bold('Ready to boostrap! ✅')}`;
+  console.log(boldText);
+
   return true;
 };
 
-const bootstrap = () => {
-  exec(CDK_BOOTSTRAP, (err, stdout, stderr) => {
-    if (err) {
-      console.error(err);
-      console.error(`stderr: ${stderr}`);
-      return;
-    }
+const bootstrap = async () => {
+  const { execa } = await require('../esmodules.js')();
 
-    arrowText('Bootstrapping Seamless:', 'with AWS CDK', `${stdout}`);
-  });
+  arrowText('Bootstrapping Seamless:', 'with AWS CDK');
+
+  const childprocess = execa('cdk', ['bootstrap']).pipeStdout(process.stdout);
+
+  await childprocess;
 };
 
-const init = () => {
+const init = async () => {
+  const { chalk } = await require('../esmodules.js')();
+
+  console.log(chalk.bold.blue('Welcome to the Seamless CLI!'));
   console.log(logo);
 
   arrowText('Initializing Seamless', 'Set up your CI/CD pipeline!');
 
   while (true) {
-    const envVariables = getEnvVariables();
+    const envVariables = await getEnvVariables();
 
     if (validEnvironment(envVariables)) {
       const envContents = Object.keys(envVariables)
@@ -100,7 +103,7 @@ const init = () => {
     }
   }
 
-  bootstrap();
+  await bootstrap();
   checkmarkText('Seamless Init:', 'complete');
 };
 
