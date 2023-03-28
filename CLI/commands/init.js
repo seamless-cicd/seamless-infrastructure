@@ -1,6 +1,6 @@
 const fs = require('fs');
 const readlineSync = require('readline-sync');
-const { logo, arrowText, checkmarkText } = require('../utils.js');
+const { logo, rightArrowText, checkmarkText } = require('../utils.js');
 const z = require('zod');
 
 const question = async (text) => {
@@ -74,7 +74,7 @@ const validEnvironment = async (envVariables) => {
 const bootstrap = async () => {
   const { execa } = await require('../esmodules.js')();
 
-  arrowText('Bootstrapping Seamless:', 'with AWS CDK');
+  rightArrowText('Bootstrapping Seamless:', 'with AWS CDK');
 
   const childprocess = execa('cdk', ['bootstrap']).pipeStdout(process.stdout);
 
@@ -87,7 +87,7 @@ const init = async () => {
   console.log(chalk.bold.blue('Welcome to the Seamless CLI!'));
   console.log(logo);
 
-  arrowText('Initializing Seamless', 'Set up your CI/CD pipeline!');
+  rightArrowText('Initializing Seamless', 'Set up your CI/CD pipeline!');
 
   while (true) {
     const envVariables = await getEnvVariables();

@@ -1,12 +1,12 @@
-const { arrowText, checkmarkText } = require('../utils.js');
+const { rightArrowText, checkmarkText } = require('../utils.js');
 
 const teardown = async () => {
   const { execa } = await require('../esmodules.js')();
-  arrowText('Tearing down Seamless Infrastructure:', 'with AWS CDK');
+  rightArrowText('Tearing down Seamless Infrastructure:', 'with AWS CDK');
 
-  const { stdout } = await execa('cdk', ['destroy']).pipeStdout(process.stdout);
+  await execa('cdk', ['destroy']).pipeStdout(process.stdout);
 
-  arrowText('Seamless Teardown:', 'with AWS CDK');
+  rightArrowText('Seamless Teardown:', 'with AWS CDK');
   checkmarkText('Seamless Teardown:', 'complete');
 };
 

@@ -118,6 +118,7 @@ export class SeamlessStack extends Stack {
       vpc: vpcStack.vpc,
       listener: fargateBackendStack.fargate.listener,
     });
+
     // API Gateway needs to know the Backend's ALB Fargate listener ARN
     apiGatewayStack.addDependency(fargateBackendStack);
 
