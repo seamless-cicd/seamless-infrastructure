@@ -28,9 +28,4 @@ program
   .description("Destroy Seamless's AWS infrastructure.")
   .action(teardown);
 
-// program
-//   .command('help')
-//   .description('init .env file and deploy infra using cdk deploy')
-//   .action(deploy);
-
 program.parse(process.argv);
