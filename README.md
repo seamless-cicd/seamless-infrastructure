@@ -4,6 +4,8 @@
 
 Seamless's core AWS infrastructure. The major constructs in Seamless's infrastructure are described below.
 
+![architecture](https://user-images.githubusercontent.com/74154385/228690435-514f976b-40e0-482a-80de-3685aec20f9c.png)
+
 ## Resources Created
 
 ### VPC
@@ -33,6 +35,19 @@ A Redis node hosted on ElastiCache for storing logs.
 ### ECS Cluster on EC2
 
 An ECS cluster used for running pipeline tasks.
+
+## Deployment Information
+
+To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless presupposes a microservices application hosted on AWS Fargate. To install Seamless `npm` is required. The following commands will guide you through the setup:
+
+`npm install -g seamless`
+- Global installation is required.
+ 
+`seamless init`
+- Provide input as prompted to create a `.env` file which will be needed for infrastructure deployment.
+
+`seamless deploy`
+- This will provision Seamless infrastructure in AWS. Upon completion. Upon completion a URL to the UI interface will be provided.
 
 ## Developer Information
 
