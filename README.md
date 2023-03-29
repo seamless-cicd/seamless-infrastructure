@@ -40,13 +40,19 @@ An ECS cluster used for running pipeline tasks.
 
 To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless presupposes a microservices application hosted on AWS Fargate. To install Seamless `npm` is required. The following commands will guide you through the setup:
 
-`npm install -g seamless`
+```sh
+npm install -g seamless`
+```
 - Global installation is required.
  
-`seamless init`
+```sh
+seamless init
+```
 - Provide input as prompted to create a `.env` file which will be needed for infrastructure deployment.
 
-`seamless deploy`
+```
+seamless deploy
+```
 - This will provision Seamless infrastructure in AWS. Upon completion. Upon completion a URL to the UI interface will be provided.
 
 ## Developer Information
