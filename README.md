@@ -108,11 +108,11 @@ To test the state machine for development:
   - Will automatically run aws `cdk deploy`
 
 ## The Team
-<a href="https://github.com/jasonherngwang" target="_blank">Jason Wang</a> _Software Engineer_ • Los Angeles, CA
+**<a href="https://github.com/jasonherngwang" target="_blank">Jason Wang</a>** _Software Engineer_ • Los Angeles, CA
 
-<a href="https://github.com/ethanjweiner" target="_blank">Ethan Weiner</a> _Software Engineer_ • Boston, MA
+**<a href="https://github.com/ethanjweiner" target="_blank">Ethan Weiner</a>** _Software Engineer_ • Boston, MA
 
-<a href="https://github.com/RDeJonghe" target="_blank">Ryan DeJonghe</a> _Software Engineer_ • Denver, CO
+**<a href="https://github.com/RDeJonghe" target="_blank">Ryan DeJonghe</a>** _Software Engineer_ • Denver, CO
 
 ## License
 
