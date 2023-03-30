@@ -74,8 +74,12 @@ seamless init
 ```sh
 seamless deploy
 ```
-
 - This will provision Seamless infrastructure in AWS. Upon completion a URL to the Dashboard UI will be provided.
+
+```sh
+seamless teardown
+```
+- Removes infrastructure
 
 ## Developer Information
 
