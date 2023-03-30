@@ -1,6 +1,14 @@
 ![name](https://user-images.githubusercontent.com/74154385/228689679-1de28721-ca1d-4a6a-a7a9-dbcf26c54f59.png)
 
-# Seamless Infrastructure
+## Overview
+
+> _Seamless automates the deployment process from push to Prod_
+
+Seamless is a self-hosted, open-source, cloud-native CI/CD solution tailored for microservices. Seamless offers a low-configuration platform for automating the testing, building, and deployment of containerized microservice applications.
+
+To learn more about Seamless read our case study.
+
+## Infrastructure
 
 Seamless's core AWS infrastructure. The major constructs in Seamless's infrastructure are described below.
 
@@ -38,21 +46,35 @@ An ECS cluster used for running pipeline tasks.
 
 ## Deployment Information
 
-To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless presupposes a microservices application hosted on AWS Fargate. To install Seamless `npm` is required. The following commands will guide you through the setup:
+### Prerequisites
+
+- [AWS CLI](https://docs.aws.amazon.com/cli/index.html)
+- [AWS CDK](https://docs.aws.amazon.com/cdk/api/v2/)
+- Node.js
+- NPM
+
+To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless presupposes a microservices application hosted on AWS Fargate. To install Seamless `npm` is required.
+
+### Commands
+
+The following commands will guide you through the setup:
 
 ```sh
 npm install -g seamless
 ```
+
 - Global installation is required.
- 
+
 ```sh
 seamless init
 ```
+
 - Provide input as prompted to create a `.env` file which will be needed for infrastructure deployment.
 
-```
+```sh
 seamless deploy
 ```
+
 - This will provision Seamless infrastructure in AWS. Upon completion. Upon completion a URL to the UI interface will be provided.
 
 ## Developer Information
@@ -84,3 +106,23 @@ To test the state machine for development:
   - Run from project root
   - This will create a `.env` file - will overwrite existing `.env` so enter variables as needed (it asks for the variables in `.env.example`)
   - Will automatically run aws `cdk deploy`
+
+## The Team
+
+[Jason Wang](https://github.com/jasonherngwang) _Software Engineer_ • Los Angeles, CA
+<br>
+[Ethan Weiner](https://github.com/ethanjweiner) _Software Engineer_ • Boston, MA
+<br>
+[Ryan DeJonghe](https://github.com/RDeJonghe) _Software Engineer_ • Denver, CO
+
+## License
+
+MIT License
+
+Copyright (c) 2023 Seamless
+
+Permission is hereby granted, free of charge, to any person obtaining a copy of this software and associated documentation files (the "Software"), to deal in the Software without restriction, including without limitation the rights to use, copy, modify, merge, publish, distribute, sublicense, and/or sell copies of the Software, and to permit persons to whom the Software is furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
