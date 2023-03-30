@@ -75,7 +75,7 @@ seamless init
 seamless deploy
 ```
 
-- This will provision Seamless infrastructure in AWS. Upon completion. Upon completion a URL to the UI interface will be provided.
+- This will provision Seamless infrastructure in AWS. Upon completion a URL to the Dashboard UI will be provided.
 
 ## Developer Information
 
@@ -109,11 +109,11 @@ To test the state machine for development:
 
 ## The Team
 
-[Jason Wang](https://github.com/jasonherngwang) _Software Engineer_ • Los Angeles, CA
+[Jason Wang](https://github.com/jasonherngwang){:target="_blank"} _Software Engineer_ • Los Angeles, CA
 <br>
-[Ethan Weiner](https://github.com/ethanjweiner) _Software Engineer_ • Boston, MA
+[Ethan Weiner](https://github.com/ethanjweiner){:target="_blank"} _Software Engineer_ • Boston, MA
 <br>
-[Ryan DeJonghe](https://github.com/RDeJonghe) _Software Engineer_ • Denver, CO
+[Ryan DeJonghe](https://github.com/RDeJonghe){:target="_blank"} _Software Engineer_ • Denver, CO
 
 ## License
 
