@@ -55,52 +55,19 @@ An ECS cluster used for running pipeline tasks.
 
 To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless presupposes a microservices application hosted on AWS Fargate. To install Seamless `npm` is required.
 
-### Commands
+### Installing Seamless
 
-The following commands will guide you through the setup:
+1. [Create an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) for Seamless. For now, put any input in the homepage and callback URLs. We will fill them out after deploying Seamless. Save your client ID and Secret.
+2. Run `npm install -g seamless` to install the Seamless CLI
+3. Run `seamless init` to provide the input needed for deploying Seamless, and to boostrap your AWS account. Provide your OAuth app client ID and secret when prompted.
+4. Run `seamless deploy` to provision Seamless infrastructure in AWS. Upon completion a URL to the Dashboard GUI will be provided. Save this URL; it is the URL you will use to interact with Seamless.
+5. Return to the settings for the OAuth app you used to setup Seamless, and copy the URL into the homepage URL and callback URL fields.
+6. You are ready to start using Seamless!
 
-```sh
-npm install -g seamless
-```
+### Uninstalling Seamless
 
-- Global installation is required.
-
-```sh
-seamless init
-```
-
-- Provide input as prompted to create a `.env` file which will be needed for infrastructure deployment.
-
-```sh
-seamless deploy
-```
-- This will provision Seamless infrastructure in AWS. Upon completion a URL to the Dashboard UI will be provided.
-
-```sh
-seamless teardown
-```
-- Removes infrastructure
-
-## Developer Information
-
-To deploy the CDK:
-
-- Create a `.env` environment variable containing the appropriate properties from `.env.example`
-- If errors occur during deployment, do not prematurely quit the CDK. Allow the rollback to finish completely, fix the broken IaC, and redeploy.
-
-To test the state machine for development:
-
-- Locate the appropriate Step Function in the AWS console
-- Pass input in the format specified in `step_function_input.example.json`
-
-### Useful commands
-
-- `npm run build` compile typescript to js
-- `npm run watch` watch for changes and compile
-- `npm run test` perform the jest unit tests
-- `cdk deploy` deploy this stack to your default AWS account/region
-- `cdk diff` compare deployed stack with current state
-- `cdk synth` emits the synthesized CloudFormation template
+1. Run `seamless teardown` to remove all AWS infrastructure associated with Seamless.
+2. Delete the OAuth app you created for Seamless.
 
 ## The Team
 **<a href="https://github.com/jasonherngwang" target="_blank">Jason Wang</a>** _Software Engineer_ • Los Angeles, CA
