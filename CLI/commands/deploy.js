@@ -10,6 +10,8 @@ const deploy = async () => {
 
   await execa('cdk', ['deploy']);
 
+  downArrowText('AWS CDK', 'STDOUT');
+  await childProcess;
   checkmarkText('Seamless Deploy:', 'complete');
 
   // Retrieve and log API url once deploy completes
