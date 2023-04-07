@@ -1,22 +1,21 @@
-import { init, arrowText, checkmarkText } from './init.js';
-import { exec } from 'child_process';
+const {
+  rightArrowText,
+  checkmarkText,
+  getApiGatewayUrl,
+} = require('../utils.js');
 
-const CDK_DEPLOY = 'cdk deploy';
+const deploy = async () => {
+  const { execa } = await require('../esmodules.js')();
+  rightArrowText('Deploying Seamless:', 'with AWS CDK');
 
-const deploy = () => {
-  init();
+  await execa('cdk', ['deploy']);
 
-  exec(CDK_DEPLOY, (err, stdout, stderr) => {
-    if (err) {
-      console.error(err);
-      console.error(`stderr: ${stderr}`);
-      return;
-    }
+  checkmarkText('Seamless Deploy:', 'complete');
 
-    arrowText('Seamless Deploy:', 'with AWS CDK', `${stdout}`);
-    checkmarkText('Seamless Deploy:', 'complete');
-  });
+  // Get API url once deploy completes
+  const apiGatewayUrl = await getApiGatewayUrl();
 
+  rightArrowText("Here's the link to your Seamless Dashboard:", apiGatewayUrl);
 };
 
-export default deploy;
+module.exports = { deploy };
