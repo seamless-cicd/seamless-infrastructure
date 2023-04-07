@@ -11,6 +11,7 @@ const envSchema = z.object({
   SNS_SUBSCRIBER_URL: z.string().url().optional(),
   EMAIL_ADDRESS: z.string().email().optional(),
   SLACK_WEBHOOK_URL: z.string().optional(),
+  ALLOWED_IPS: z.string(),
 });
 
 export type EnvVars = z.infer<typeof envSchema>;
@@ -33,4 +34,5 @@ export const {
   SNS_SUBSCRIBER_URL,
   EMAIL_ADDRESS,
   SLACK_WEBHOOK_URL,
+  ALLOWED_IPS,
 } = parsedEnv.data;

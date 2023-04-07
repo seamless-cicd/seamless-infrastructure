@@ -64,6 +64,14 @@ const questions = [
     validate: (value) =>
       value.trim().length === 0 || isValidUrl(value) || 'Invalid URL',
   },
+  {
+    type: 'list',
+    name: 'ALLOWED_IPS',
+    message:
+      "Enter IPs allowed to access your dashboard (e.g. '123.456.789,012, 123.456.789,012'):",
+    initial: '',
+    separator: ',',
+  },
 ];
 
 const bootstrap = async () => {
@@ -83,14 +91,20 @@ const init = async () => {
   const answers = await prompts.prompt(questions);
   const envContents = Object.keys(answers)
     .filter((key) => answers[key])
-    .map((key) => `${key}=${answers[key]}`)
+    .map((key) => {
+      if (Array.isArray(key)) {
+        return `${key}=${answers[key].join(',')}`;
+      }
+
+      return `${key}=${answers[key]}`;
+    })
     .join('\n');
 
   fs.writeFileSync('.env', envContents);
 
   console.log('\n');
   await bootstrap();
-  checkmarkText('Seamless Init:', 'complete ✅');
+  checkmarkText('Seamless Init:', 'complete');
 };
 
 module.exports = { init };
