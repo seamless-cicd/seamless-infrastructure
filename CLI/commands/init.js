@@ -88,6 +88,7 @@ const init = async () => {
 
   fs.writeFileSync('.env', envContents);
 
+  console.log('\n');
   await bootstrap();
   checkmarkText('Seamless Init:', 'complete');
 };

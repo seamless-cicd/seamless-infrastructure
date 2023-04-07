@@ -10,7 +10,6 @@ const deploy = async () => {
 
   await execa('cdk', ['deploy']);
 
-  await childProcess.pipeStdout(process.stdout);
   checkmarkText('Seamless Deploy:', 'complete');
 
   // Get API url once deploy completes
