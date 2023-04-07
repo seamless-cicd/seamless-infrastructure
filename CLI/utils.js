@@ -10,11 +10,6 @@ const rightArrowText = (text1, text2, text3 = '') => {
   console.log(chalk.bold.blue(`${arrow} ${text1}`), `${text2}`, `${text3}`);
 };
 
-const downArrowText = (text1, text2, text3 = '') => {
-  const arrow = '\u2193';
-  console.log(chalk.bold.blue(`${arrow} ${text1}`), `${text2}`, `${text3}`);
-};
-
 const checkmarkText = (text1, text2) => {
   console.log(
     chalk.bold(`${chalk.green('✔️')}`),
@@ -64,10 +59,25 @@ const getApiGatewayUrl = async () => {
   }
 };
 
+function isValidEmail(value) {
+  // This is a simple email validation regex, you can replace it with your own implementation
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value);
+}
+
+function isValidUrl(value) {
+  try {
+    new URL(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 module.exports = {
   rightArrowText,
-  downArrowText,
   checkmarkText,
+  isValidEmail,
+  isValidUrl,
   getApiGatewayUrl,
   logo,
 };

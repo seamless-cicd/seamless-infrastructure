@@ -1,11 +1,11 @@
 #!/usr/bin/env node
 
-const commander = require('commander');
+const { Command } = require('commander');
 const { deploy } = require('./commands/deploy.js');
 const { init } = require('./commands/init.js');
 const { teardown } = require('./commands/teardown.js');
 
-const program = new commander.Command();
+const program = new Command();
 
 // init: Load use input into a `.env` file
 program

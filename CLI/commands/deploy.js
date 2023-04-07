@@ -1,6 +1,5 @@
 const {
   rightArrowText,
-  downArrowText,
   checkmarkText,
   getApiGatewayUrl,
 } = require('../utils.js');
@@ -9,11 +8,9 @@ const deploy = async () => {
   const { execa } = await require('../esmodules.js')();
   rightArrowText('Deploying Seamless:', 'with AWS CDK');
 
-  const childProcess = execa('cdk', ['deploy']).pipeStdout(process.stdout);
+  const childProcess = execa('cdk', ['deploy']);
 
-  rightArrowText('Seamless Deploy:', 'with AWS CDK');
-  downArrowText('AWS CDK', 'STDOUT');
-  await childProcess;
+  await childProcess.pipeStdout(process.stdout);
   checkmarkText('Seamless Deploy:', 'complete');
 
   // Get API url once deploy completes
