@@ -6,7 +6,6 @@ const teardown = async () => {
 
   await execa('cdk', ['destroy']).pipeStdout(process.stdout);
 
-  rightArrowText('Seamless Teardown:', 'with AWS CDK');
   checkmarkText('Seamless Teardown:', 'complete');
 };
 

@@ -1,9 +1,14 @@
+const { config } = require('dotenv');
+config();
+
 const {
   ApiGatewayV2Client,
   GetApisCommand,
 } = require('@aws-sdk/client-apigatewayv2');
 
 const chalk = require('chalk');
+
+const region = process.env.REGION;
 
 const rightArrowText = (text1, text2, text3 = '') => {
   const arrow = '\u2192';
@@ -36,7 +41,7 @@ const logo = chalk.blue(`
 
 const getApiGatewayUrl = async () => {
   const apiGatewayClient = new ApiGatewayV2Client({
-    region: AWS_REGION,
+    region,
   });
 
   try {

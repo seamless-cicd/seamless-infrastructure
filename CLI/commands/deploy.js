@@ -8,7 +8,7 @@ const deploy = async () => {
   const { execa } = await require('../esmodules.js')();
   rightArrowText('Deploying Seamless:', 'with AWS CDK');
 
-  const childProcess = execa('cdk', ['deploy']);
+  await execa('cdk', ['deploy']);
 
   await childProcess.pipeStdout(process.stdout);
   checkmarkText('Seamless Deploy:', 'complete');

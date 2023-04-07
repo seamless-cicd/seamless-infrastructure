@@ -69,8 +69,7 @@ const questions = [
 const bootstrap = async () => {
   const { execa } = await require('../esmodules.js')();
   rightArrowText('Bootstrapping Seamless:', 'with AWS CDK');
-  const childprocess = execa('cdk', ['bootstrap']);
-  await childprocess.pipeStdout(process.stdout);
+  await execa('cdk', ['bootstrap']);
 };
 
 const init = async () => {
