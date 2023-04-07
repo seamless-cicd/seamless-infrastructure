@@ -90,7 +90,7 @@ const init = async () => {
 
   console.log('\n');
   await bootstrap();
-  checkmarkText('Seamless Init:', 'complete');
+  checkmarkText('Seamless Init:', 'complete ✅');
 };
 
 module.exports = { init };

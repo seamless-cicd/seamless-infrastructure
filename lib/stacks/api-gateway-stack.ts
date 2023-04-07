@@ -11,7 +11,6 @@ import {
 } from 'aws-cdk-lib/aws-apigatewayv2';
 import { IVpc } from 'aws-cdk-lib/aws-ec2';
 import { ApplicationListener } from 'aws-cdk-lib/aws-elasticloadbalancingv2';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 export interface ApiGatewayStackProps extends NestedStackProps {

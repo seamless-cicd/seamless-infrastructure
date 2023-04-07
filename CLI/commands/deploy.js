@@ -12,7 +12,7 @@ const deploy = async () => {
 
   checkmarkText('Seamless Deploy:', 'complete');
 
-  // Get API url once deploy completes
+  // Retrieve and log API url once deploy completes
   const apiGatewayUrl = await getApiGatewayUrl();
 
   rightArrowText("Here's the link to your Seamless Dashboard:", apiGatewayUrl);
