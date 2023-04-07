@@ -1,6 +1,7 @@
 {
   "name": "@seamless-cicd/seamless",
   "version": "0.1.0",
+  "license": "MIT",
   "bin": {
     "seamless": "cli/cli.js"
   },
