@@ -1,5 +1,5 @@
 {
-  "name": "seamless",
+  "name": "@seamless-cicd/seamless",
   "version": "0.1.0",
   "bin": {
     "seamless": "cli/cli.js"
