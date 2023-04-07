@@ -58,7 +58,7 @@ To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless pres
 ### Installing Seamless
 
 1. [Create an OAuth app](https://docs.github.com/en/apps/oauth-apps/building-oauth-apps/creating-an-oauth-app) for Seamless. For now, put any input in the homepage and callback URLs. We will fill them out after deploying Seamless. Save your client ID and Secret.
-2. Run `npm install -g seamless` to install the Seamless CLI
+2. Run `npm install -g @seamless-cicd/seamless` to install the Seamless CLI
 3. Run `seamless init` to provide the input needed for deploying Seamless, and to boostrap your AWS account. Provide your OAuth app client ID and secret when prompted.
 4. Run `seamless deploy` to provision Seamless infrastructure in AWS. Upon completion a URL to the Dashboard GUI will be provided. Save this URL; it is the URL you will use to interact with Seamless.
 5. Return to the settings for the OAuth app you used to setup Seamless, and copy the URL into the homepage URL and callback URL fields.
@@ -70,6 +70,7 @@ To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless pres
 2. Delete the OAuth app you created for Seamless.
 
 ## The Team
+
 **<a href="https://github.com/jasonherngwang" target="_blank">Jason Wang</a>** _Software Engineer_ • Los Angeles, CA
 
 **<a href="https://github.com/ethanjweiner" target="_blank">Ethan Weiner</a>** _Software Engineer_ • Boston, MA
