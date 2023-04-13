@@ -1,9 +1,8 @@
-import { Fn, NestedStack, NestedStackProps, Stack, Tags } from 'aws-cdk-lib';
+import { Duration, NestedStack, NestedStackProps } from 'aws-cdk-lib';
 import { IVpc, SubnetType } from 'aws-cdk-lib/aws-ec2';
 import { Cluster, ContainerImage } from 'aws-cdk-lib/aws-ecs';
 import { ApplicationLoadBalancedFargateService } from 'aws-cdk-lib/aws-ecs-patterns';
 import { Effect, PolicyStatement } from 'aws-cdk-lib/aws-iam';
-import { StringParameter } from 'aws-cdk-lib/aws-ssm';
 import { Construct } from 'constructs';
 
 import { config } from 'dotenv';
@@ -94,13 +93,23 @@ export class FargateBackendStack extends NestedStack {
             }:${props.rdsPort || 5432}/seamless_rds?schema=public`,
             REDIS_HOST: props.elastiCacheEndpoint,
             REDIS_PORT: props.elastiCachePort || '6379',
-            // BACKEND_URL: Fn.sub('${SeamlessApiGatewayUrl}'),
-            // WEBSOCKETS_API_URL: Fn.sub('${SeamlessWebsocketsApiGatewayUrl}'),
-            // STEP_FUNCTION_ARN: Fn.sub('${SeamlessStateMachineArn}'),
           },
         },
       },
     );
+
+    // Auto-scaling based on number of requests
+    // const scalableTarget = this.fargate.service.autoScaleTaskCount({
+    //   minCapacity: 1,
+    //   maxCapacity: 5,
+    // });
+
+    // scalableTarget.scaleOnRequestCount('RequestScaling', {
+    //   targetGroup: this.fargate.targetGroup,
+    //   requestsPerTarget: 1000,
+    //   scaleInCooldown: Duration.seconds(60),
+    //   scaleOutCooldown: Duration.seconds(60),
+    // });
 
     // Add IAM policy to grant permissions to the Backend Fargate service
     const policy = new PolicyStatement({
