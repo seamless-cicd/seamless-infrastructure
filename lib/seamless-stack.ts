@@ -72,24 +72,24 @@ export class SeamlessStack extends Stack {
     ];
 
     // Demo - Production Cluster
-    const prodStack = new FargateWithServiceConnectStack(this, 'SeamlessProd', {
-      vpc: vpcStack.vpc,
-      services: prodServices,
-      entryPort: 3000, // The port on the public-facing service
-    });
-    prodStack.addDependency(vpcStack);
+    // const prodStack = new FargateWithServiceConnectStack(this, 'SeamlessProd', {
+    //   vpc: vpcStack.vpc,
+    //   services: prodServices,
+    //   entryPort: 3000, // The port on the public-facing service
+    // });
+    // prodStack.addDependency(vpcStack);
 
-    // Demo - Staging Cluster
-    const stagingStack = new FargateWithServiceConnectStack(
-      this,
-      'SeamlessStaging',
-      {
-        vpc: vpcStack.vpc,
-        services: prodServices, // Same services as prod
-        entryPort: 3000,
-      },
-    );
-    stagingStack.addDependency(vpcStack);
+    // // Demo - Staging Cluster
+    // const stagingStack = new FargateWithServiceConnectStack(
+    //   this,
+    //   'SeamlessStaging',
+    //   {
+    //     vpc: vpcStack.vpc,
+    //     services: prodServices, // Same services as prod
+    //     entryPort: 3000,
+    //   },
+    // );
+    // stagingStack.addDependency(vpcStack);
 
     // Backend Fargate Cluster
     const fargateBackendStack = new FargateBackendStack(
