@@ -4,13 +4,15 @@
 
 > _Seamless automates the deployment process from push to Prod_
 
+Seamless' infrastructure is built using the AWS [Cloud Development Kit](https://aws.amazon.com/cdk/) (CDK).
+
 Seamless is a self-hosted, open-source, cloud-native CI/CD solution tailored for microservices. Seamless offers a low-configuration platform for automating the testing, building, and deployment of containerized microservice applications.
 
 To learn more about Seamless read our case study.
 
 ## Infrastructure
 
-Seamless's core AWS infrastructure. The major constructs in Seamless's infrastructure are described below.
+Seamless' core AWS infrastructure. The major constructs in Seamless's infrastructure are described below.
 
 ![architecture](https://user-images.githubusercontent.com/74154385/228690435-514f976b-40e0-482a-80de-3685aec20f9c.png)
 
