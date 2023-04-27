@@ -54,7 +54,7 @@ export class SeamlessStack extends Stack {
         name: 'payment',
         serviceDiscoveryName: 'seamless-demo-payment',
         image:
-          '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-payment:1',
+          'jasonherngwang/seamless-demo-payment',
         port: 3000,
         addToAlbTargetGroup: true,
       },
@@ -62,7 +62,7 @@ export class SeamlessStack extends Stack {
         name: 'notification',
         serviceDiscoveryName: 'seamless-demo-notification',
         image:
-          '697645747316.dkr.ecr.us-east-1.amazonaws.com/seamless-cicd/seamless-demo-notification:1',
+          'jasonherngwang/seamless-demo-notification',
         port: 3000,
         addToAlbTargetGroup: false,
         environment: {
