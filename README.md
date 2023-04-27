@@ -71,6 +71,10 @@ To use Seamless the AWS CLI and AWS CDK is required. Additionally, Seamless pres
 1. Run `seamless teardown` to remove all AWS infrastructure associated with Seamless.
 2. Delete the OAuth app you created for Seamless.
 
+## Load Testing
+
+Select portions of Seamless' internal infrastructure have been load tested with AWS's [distributed load testing solution](https://www.google.com/search?q=aws+distributed+load+testing&oq=aws+distributed+load+testing&sourceid=chrome&ie=UTF-8) and [k6](https://k6.io/)
+
 ## The Team
 
 **<a href="https://github.com/jasonherngwang" target="_blank">Jason Wang</a>** _Software Engineer_ • Los Angeles, CA
